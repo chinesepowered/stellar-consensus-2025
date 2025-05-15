@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  transpilePackages: ['passkey-kit', 'passkey-kit-sdk', 'sac-sdk'],
+  // transpilePackages: ['passkey-kit', 'passkey-kit-sdk', 'sac-sdk'], // Temporarily commented out
 };
 
 export default nextConfig;

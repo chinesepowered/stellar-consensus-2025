@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@simplewebauthn/browser':
+        specifier: ^13.1.0
+        version: 13.1.0
       '@stellar/stellar-sdk':
         specifier: ^13.3.0
         version: 13.3.0
