@@ -66,16 +66,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             const { PasskeyKit } = await import('passkey-kit');
             
             passkeyKitRef.current = new PasskeyKit({
-              appName: 'OnlyFrens',
-              // Corrected: PasskeyKit constructor from search results expects rpcUrl, networkPassphrase, walletWasmHash
-              // These were missing in UserContext.tsx before or had different names.
-              // Assuming you have these in environment variables or defined constants.
-              // Using NEXT_PUBLIC_SOROBAN_RPC_URL as an example from previous context for rpcUrl.
-              // For networkPassphrase and walletWasmHash, you'll need to provide actual values.
-              // Using placeholders for now.
               rpcUrl: process.env.NEXT_PUBLIC_SOROBAN_RPC_URL || 'https://soroban-testnet.stellar.org:443',
-              networkPassphrase: process.env.NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE || 'Test SDF Network ; September 2015', // Example placeholder
-              walletWasmHash: process.env.NEXT_PUBLIC_WALLET_WASM_HASH || 'YOUR_WALLET_WASM_HASH_HERE', // Example placeholder - THIS NEEDS TO BE A REAL HASH
+              networkPassphrase: 'Test SDF Network ; September 2015',
+              walletWasmHash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' // Sample hash - replace with actual hash
             });
             setIsPasskeyKitInitialized(true);
             console.log("PasskeyKit initialized and WebAuthn supported.");
@@ -226,11 +219,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     try {
       // For login, PasskeyKit usually doesn't need username upfront if discoverable credentials are used
-      const challengePayload: PasskeyLoginChallenge & { rpId: string, allowCredentials?: any[] } = await fetch('/api/auth/passkey/login-challenge', { 
+      console.log("Sending login challenge request...");
+      const challengeResponse = await fetch('/api/auth/passkey/login-challenge', { 
           method: 'POST', 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({}), // Empty body or could include username for non-discoverable
-      }).then(res => res.json());
+      });
+      
+      if (!challengeResponse.ok) {
+        const errorText = await challengeResponse.text();
+        console.error("Login challenge error:", challengeResponse.status, errorText);
+        throw new Error(`Login Error: Failed to fetch challenge - ${challengeResponse.status} ${errorText}`);
+      }
+      
+      const challengePayload = await challengeResponse.json();
+      console.log("Challenge received:", challengePayload);
 
       const passkeyKitOptions = { rpID: challengePayload.rpId, allowCredentials: challengePayload.allowCredentials };
 

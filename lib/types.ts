@@ -54,5 +54,5 @@ export interface PasskeyRegistrationChallenge {
 export interface PasskeyLoginChallenge {
   challenge: string;
   // Optional: allowCredentials can be used to suggest specific credentials to the client
-  // allowCredentials?: Array<{ type: 'public-key', id: string }>;
+  allowCredentials?: Array<{ type: 'public-key', id: string }>;
 } 
