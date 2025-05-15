@@ -2,14 +2,26 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { PasskeyKit } from 'passkey-kit';
 import { UserAction, RPC_URL, NETWORK_PASSPHRASE, DUMMY_WALLET_WASM_HASH } from '../lib/data';
+import { AssembledTransaction } from '@stellar/stellar-sdk/minimal/contract';
+
+// Define App Name for PasskeyKit
+const APP_NAME = "OnlyFrens";
+
+// Define the expected structure for the result of passkeyKitInstance.createKey
+interface CreateKeyResult {
+  rawResponse: any; // Can be refined if AuthenticatorAttestationResponseJSON is available and needed
+  keyId: Buffer;
+  keyIdBase64: string;
+  publicKey: Buffer;
+}
 
 // Define the shape of the context data
 interface WalletState {
   isLoggedIn: boolean;
-  userAddress: string | null;
+  userIdentifier: string | null; // Changed from userAddress to reflect passkey ID or similar
   passkeyKitInstance: PasskeyKit | null;
   userActions: UserAction[];
-  login: (username?: string) => Promise<void>;
+  login: (username: string) => Promise<void>;
   logout: () => void;
   signTransaction: (xdr: string) => Promise<string | null>;
   addRecentAction: (action: UserAction) => void;
@@ -25,86 +37,104 @@ interface WalletProviderProps {
 
 export const WalletProvider = ({ children }: WalletProviderProps) => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [userAddress, setUserAddress] = useState<string | null>(null);
+  const [userIdentifier, setUserIdentifier] = useState<string | null>(null); 
   const [passkeyKitInstance, setPasskeyKitInstance] = useState<PasskeyKit | null>(null);
   const [userActions, setUserActions] = useState<UserAction[]>([]);
 
   useEffect(() => {
-    const kit = new PasskeyKit({
-      rpcUrl: RPC_URL,
-      networkPassphrase: NETWORK_PASSPHRASE,
-      walletWasmHash: DUMMY_WALLET_WASM_HASH,
-    });
-    setPasskeyKitInstance(kit);
+    if (typeof window !== 'undefined') {
+      try {
+        const kit = new PasskeyKit({
+          rpcUrl: RPC_URL,
+          networkPassphrase: NETWORK_PASSPHRASE,
+          walletWasmHash: DUMMY_WALLET_WASM_HASH,
+        });
+        setPasskeyKitInstance(kit);
+        console.log("PasskeyKit initialized");
+      } catch (error) {
+        console.error("Error initializing PasskeyKit:", error);
+        // Handle initialization error, e.g. by setting a state that disables passkey functionality
+      }
+    }
   }, []);
 
-  const login = async (username: string = 'defaultUser') => {
+  const login = async (username: string) => {
     if (!passkeyKitInstance) {
       console.error("PasskeyKit not initialized");
+      alert("Login service not ready. Please try again shortly.");
       return;
     }
+    setUserIdentifier(username);
     try {
-      console.log(`Simulating passkey creation/authentication for user: ${username}`);
-      const simulatedPk = "G_DUMMY_LOGGED_IN_USER_ADDRESS";
-      
-      if (simulatedPk) {
-        setUserAddress(simulatedPk);
+      const result: CreateKeyResult = await passkeyKitInstance.createKey(APP_NAME, username);
+      console.log("Key creation result:", result);
+
+      if (result.keyIdBase64) {
         setIsLoggedIn(true);
-        addRecentAction({
+        addRecentAction({ 
           id: Date.now().toString(),
           type: "Login",
-          timestamp: new Date().toISOString(),
-          details: `User ${username} logged in successfully.`
+          details: `Logged in as ${username} (Key ID: ${result.keyIdBase64.substring(0, 10)}...)`,
+          timestamp: new Date().toISOString() 
         });
-        console.log(`User ${username} logged in, address:`, simulatedPk);
+        alert(`Hello ${username}! Your passkey is now active for this session.`);
       } else {
-        console.warn("Login attempt: Simulated public key retrieval failed.");
-        setIsLoggedIn(false);
-        setUserAddress(null);
+        console.error("Login failed: keyIdBase64 not found in createKey result");
+        alert("Login failed: Could not retrieve passkey details. Please check console.");
+      }
+    } catch (error: any) {
+      console.error("Login/Registration with Passkey failed:", error);
+      let errorMessage = "Login/Registration with Passkey failed.";
+      if (error && error.message) {
+        errorMessage += ` Error: ${error.message}`;
       }
 
-    } catch (error) {
-      console.error("Login failed:", error);
+      // Check for common user cancellation errors from WebAuthn prompts
+      const messageIncludesCancelled = typeof error?.message === 'string' && error.message.includes('cancelled');
+      const messageIncludesAbortError = typeof error?.message === 'string' && error.message.includes('AbortError');
+
+      if (
+        (error && error.name === 'AbortError') || 
+        messageIncludesCancelled || 
+        messageIncludesAbortError || 
+        (error && error.name === 'NotAllowedError')
+      ) {
+        errorMessage = "Passkey operation cancelled or not allowed by user.";
+      }
+      alert(errorMessage);
       setIsLoggedIn(false);
-      setUserAddress(null);
+      setUserIdentifier(null);
     }
   };
 
   const logout = () => {
+    // const loggedOutUsername = username || 'User'; // username state was removed for simplicity for now
     setIsLoggedIn(false);
-    setUserAddress(null);
+    setUserIdentifier(null); 
     addRecentAction({
         id: Date.now().toString(),
         type: "Logout",
         timestamp: new Date().toISOString(),
-        details: "User logged out."
+        details: `User logged out.`
       });
-    console.log("User logged out");
+    console.log(`User logged out`);
+    alert("You have been logged out.");
   };
 
   const signTransaction = async (xdr: string): Promise<string | null> => {
     if (!passkeyKitInstance || !isLoggedIn) {
-      console.error("Cannot sign transaction: User not logged in or PasskeyKit not initialized.");
+      console.error("Not logged in or PasskeyKit not initialized");
+      alert("Please log in first to sign transactions.");
       return null;
     }
     try {
-      console.log("Attempting to sign XDR:", xdr);
-      const signedTransactionResult = await passkeyKitInstance.sign(xdr);
-      
-      if (signedTransactionResult && typeof (signedTransactionResult as any).xdr === 'string') {
-        const signedXdrString = (signedTransactionResult as any).xdr as string;
-        console.log("Transaction signed, XDR:", signedXdrString);
-        return signedXdrString;
-      } else {
-        if (typeof signedTransactionResult === 'string') {
-            console.log("Transaction signed, (raw string result):", signedTransactionResult);
-            return signedTransactionResult;
-        }
-        console.error("Signed transaction result does not contain a valid XDR string.", signedTransactionResult);
-        return null;
-      }
-    } catch (error) {
-      console.error("Failed to sign transaction:", error);
+      console.log("Attempting to sign XDR with PasskeyKit:", xdr);
+      const signedResult: AssembledTransaction<any> = await passkeyKitInstance.sign(xdr);
+      console.log("Transaction signed:", signedResult);
+      return signedResult.toXDR();
+    } catch (error: any) {
+      console.error("Failed to sign transaction with PasskeyKit:", error);
+      alert(`Transaction signing failed: ${error.message}`);
       return null;
     }
   };
@@ -114,7 +144,7 @@ export const WalletProvider = ({ children }: WalletProviderProps) => {
   };
 
   return (
-    <WalletContext.Provider value={{ isLoggedIn, userAddress, passkeyKitInstance, userActions, login, logout, signTransaction, addRecentAction }}>
+    <WalletContext.Provider value={{ isLoggedIn, userIdentifier, passkeyKitInstance, userActions, login, logout, signTransaction, addRecentAction }}>
       {children}
     </WalletContext.Provider>
   );

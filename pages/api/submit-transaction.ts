@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { LAUNCHTUBE_URL } from '../../lib/data';
 
 // This would be your private Launchtube JWT. Store it securely in environment variables.
-const LAUNCHTUBE_JWT = process.env.LAUNCHTUBE_JWT || 'YOUR_PRIVATE_LAUNCHTUBE_JWT_HERE';
+const LAUNCHTUBE_JWT = process.env.LAUNCHPAD_TOKEN || 'YOUR_PRIVATE_LAUNCHTUBE_JWT_HERE';
 
 if (LAUNCHTUBE_JWT === 'YOUR_PRIVATE_LAUNCHTUBE_JWT_HERE' && process.env.NODE_ENV === 'production') {
   console.warn("CRITICAL: Launchtube JWT is not set or is using the placeholder value in a production environment!");

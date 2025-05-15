@@ -37,7 +37,7 @@ export const featuredCreator: Creator = {
   avatarUrl: 'https://i.pravatar.cc/150?u=roti_lady30', // Placeholder avatar
   timeline: [
     { id: 't1', type: 'image', content: 'https://picsum.photos/seed/roti1/600/400', timestamp: '2024-07-28T10:00:00Z' }, // Placeholder image
-    { id: 't2', type: 'text', content: 'So grateful for the support I've received so far! It means the world to me.', timestamp: '2024-07-28T12:30:00Z' },
+    { id: 't2', type: 'text', content: "So grateful for the support I've received so far! It means the world to me.", timestamp: '2024-07-28T12:30:00Z' },
     { id: 't3', type: 'image', content: 'https://picsum.photos/seed/roti2/600/400', timestamp: '2024-07-29T09:15:00Z' }, // Placeholder image
     { id: 't4', type: 'text', content: 'New batch of mango sticky rice Roti coming up tomorrow!', timestamp: '2024-07-29T15:00:00Z' },
   ],
@@ -54,10 +54,10 @@ export const featuredCreator: Creator = {
 };
 
 // Dummy contract IDs - REPLACE WITH ACTUAL DEPLOYED CONTRACT IDs
-export const DUMMY_SUBSCRIPTION_CONTRACT_ID: string = 'CDUMMYSUBSCRIPTIONCONTRACTIDAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-export const DUMMY_TIPJAR_CONTRACT_ID: string = 'CDUMMYTIPJARCONTRACTIDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-export const DUMMY_NFT_MINT_CONTRACT_ID: string = 'CDUMMYNFTMINTCONTRACTIDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-export const DUMMY_WALLET_WASM_HASH: string = 'YOUR_SMART_WALLET_WASM_HASH_HERE_32_BYTES_HEX_ENCODED'; // Placeholder
+export const DUMMY_SUBSCRIPTION_CONTRACT_ID: string = 'CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV'; // Updated Main Contract ID
+export const DUMMY_TIPJAR_CONTRACT_ID: string = 'CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV'; // Updated Main Contract ID
+export const DUMMY_NFT_MINT_CONTRACT_ID: string = 'CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR'; // Updated NFT Contract ID
+export const DUMMY_WALLET_WASM_HASH: string = 'YOUR_SMART_WALLET_WASM_HASH_HERE_32_BYTES_HEX_ENCODED'; // Placeholder - User needs to update this
 
 // Placeholder for Launchtube configuration (replace with actual values)
 export const LAUNCHTUBE_URL: string = 'https://testnet.launchtube.xyz'; // Or your self-hosted instance
@@ -67,6 +67,7 @@ export const RPC_URL: string = 'https://soroban-testnet.stellar.org';
 export const NETWORK_PASSPHRASE: string = 'Test SDF Network ; September 2015';
 // This would be the contract ID of your smart wallet factory, if you're deploying new smart wallets for users.
 // For this example, we might assume users already have a compatible wallet or use a simpler passkey signing flow.
-export const FACTORY_CONTRACT_ID: string = 'YOUR_FACTORY_CONTRACT_ID_IF_APPLICABLE';
+export const FACTORY_CONTRACT_ID: string = 'YOUR_FACTORY_CONTRACT_ID_IF_APPLICABLE'; // Placeholder - User needs to update this for PasskeyKit smart wallet deployment
 
+console.log("Contract IDs updated. Please ensure DUMMY_WALLET_WASM_HASH and FACTORY_CONTRACT_ID are correctly set if PasskeyKit deploys smart wallets.");
 console.log("Don't forget to replace DUMMY contract IDs and PasskeyKit/Launchtube config in lib/data.ts with actual values!"); 
