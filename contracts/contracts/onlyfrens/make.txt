@@ -1,0 +1,32 @@
+stellar contract build
+
+
+stellar contract deploy `
+  --wasm \code\consensus\contracts\target\wasm32v1-none\release\onlyfrens.wasm `
+  --source chineseman `
+  --network testnet `
+  --alias onlyfrens
+
+ℹ️ Simulating install transaction…
+ℹ️ Signing transaction: 9f7bf12f5cc22ecd53ff3342edd3fd9a815e515e7e4d05bf11c3d8c0facf29ad
+🌎 Submitting install transaction…
+ℹ️ Using wasm hash 0128c132dc1b9f1dc62842323fcdbd630850451c4ac3f9e448a36039be481357
+ℹ️ Simulating deploy transaction…
+ℹ️ Transaction hash is 7a668f39b30fbd24a342666a658938d0895e90002e58dae3f3cc9b43ee1b591e
+🔗 https://stellar.expert/explorer/testnet/tx/7a668f39b30fbd24a342666a658938d0895e90002e58dae3f3cc9b43ee1b591e
+ℹ️ Signing transaction: 7a668f39b30fbd24a342666a658938d0895e90002e58dae3f3cc9b43ee1b591e
+🌎 Submitting deploy transaction…
+🔗 https://stellar.expert/explorer/testnet/contract/CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV
+✅ Deployed!
+CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV
+
+
+soroban contract bindings typescript --wasm \code\consensus\contracts\target\wasm32v1-none\release\onlyfrens_nft.wasm --output ./nft_contract_client.rs --target rust
+
+
+Rust bindings
+ stellar contract bindings rust --wasm \code\consensus\contracts\target\wasm32v1-none\release\onlyfrens.wasm
+
+Javascript bindings
+stellar contract bindings typescript --wasm \code\consensus\contracts\target\wasm32v1-none\release\onlyfrens.wasm --output-dir ./bindings/
+
