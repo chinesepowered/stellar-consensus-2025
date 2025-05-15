@@ -15,7 +15,7 @@ const initialFeaturedCreator = {
   location: 'Bangkok, Thailand',
   teaserVideoUrl: '/videos/roti_lady_teaser.mp4',
   bannerImageUrl: 'https://images.unsplash.com/photo-1496412705862-e0088f16f791?ixlib=rb-1.2.1&auto=format&fit=crop&w=1200&q=80',
-  profileImageUrl: 'https://images.unsplash.com/photo-1546961329-78bef0414d7c?ixlib=rb-1.2.1&auto=format&fit=crop&w=256&h=256&q=80',
+  profileImageUrl: '/profile.jpg',
   supportGoal: {
     current: 340,
     target: 1000,
@@ -35,14 +35,14 @@ const initialFeaturedCreator = {
     {
       id: 'post1',
       content: 'Fresh batch of roti dough, ready for the day! #thaifood #streetfood',
-      imageUrl: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+      imageUrl: '/cooking1.jpg',
       date: new Date(Date.now() - 86400000 * 2).toISOString(),
       likes: 24
     },
     {
       id: 'post2',
       content: 'Happy customer enjoying a banana Nutella roti! 😊',
-      imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+      imageUrl: '/cooking2.jpg',
       date: new Date(Date.now() - 86400000).toISOString(),
       likes: 36
     },

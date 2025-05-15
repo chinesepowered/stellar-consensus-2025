@@ -1,11 +1,25 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
-import { User as ApiUser, NftData, UserAction, PasskeyRegistrationChallenge, PasskeyLoginChallenge } from '@/lib/types'; // Import standardized types
+import { User as ApiUser, NftData, UserAction } from '@/lib/types'; // Import standardized types
 import { browserSupportsWebAuthn } from '@simplewebauthn/browser'; // Import the support check
 import type { PasskeyKit as PasskeyKitType } from 'passkey-kit'; // Import the actual type
 
+// Configuration values previously in lib/data.ts
+const DUMMY_WALLET_WASM_HASH = 'ecd990f0b45ca6817149b6175f79b32efb442f35731985a084131e8265c4cd90';
+const FACTORY_CONTRACT_ID = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
+const RPC_URL = 'https://soroban-testnet.stellar.org';
+const NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
+
+// Contract IDs for demo purposes
+const DUMMY_SUBSCRIPTION_CONTRACT_ID = 'CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV';
+const DUMMY_TIPJAR_CONTRACT_ID = 'CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV';
+const DUMMY_NFT_MINT_CONTRACT_ID = 'CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR';
+
+// Local storage keys
 const SESSION_TOKEN_LOCAL_STORAGE_KEY = 'onlyfrens_session_token';
+const LOCAL_STORAGE_USER_KEY = 'onlyfrens_user_data';
+const LOCAL_STORAGE_WALLET_KEY = 'onlyfrens_wallet_data';
 
 // Extended UserState for the context, including login status and full NftData objects
 interface UserState extends ApiUser {
@@ -20,6 +34,13 @@ interface FetchedBalances {
   platformBalance: string; // User's XLM balance deposited in the platform contract (from API)
 }
 
+// Wallet data to persist across sessions
+interface WalletData {
+  keyIdBase64: string;
+  publicKey?: string;
+  smartWalletAddress?: string;
+}
+
 interface UserContextType {
   user: UserState | null;
   currentXlmBalance: string; // Separate state for display of direct XLM balance
@@ -30,7 +51,7 @@ interface UserContextType {
   isPasskeyKitInitialized: boolean;
   // Auth methods
   registerWithPasskey: (username: string) => Promise<void>;
-  loginWithPasskey: (rawId?: string) => Promise<void>; // rawId might be needed for mock login from assertion
+  loginWithPasskey: () => Promise<void>;
   logout: () => Promise<void>;
   // Platform actions
   depositToPlatform: (amount: number) => Promise<void>;
@@ -38,19 +59,26 @@ interface UserContextType {
   subscribeToCreator: (creatorId: string, price: number) => Promise<void>;
   tipCreator: (creatorId: string, amount: number) => Promise<void>;
   purchaseNft: (nftDetails: Omit<NftData, 'id' | 'purchaseDate' | 'contractAddress' | 'tokenId'> & { id: string, price: number, creatorId: string }) => Promise<void>;
-  fetchBalances: (tokenOverride?: string) => Promise<void>;
+  fetchBalances: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
+// Helper function to mock a Stellar wallet address from a username
+const mockWalletAddress = (username: string): string => {
+  // Generate a deterministic mock wallet address for demo purposes
+  return `G${username.toUpperCase().repeat(5).substring(0, 55)}`;
+};
+
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserState | null>(null);
-  const [currentXlmBalance, setCurrentXlmBalance] = useState<string>('0.0000000');
+  const [currentXlmBalance, setCurrentXlmBalance] = useState<string>('10000.0000000');
   const [isLoading, setIsLoading] = useState(false); // For general per-action loading
   const [isLoadingUser, setIsLoadingUser] = useState(true); // For initial session check
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [isPasskeySupported, setIsPasskeySupported] = useState(false); // Default to false until checked
   const [isPasskeyKitInitialized, setIsPasskeyKitInitialized] = useState(false);
+  const [walletData, setWalletData] = useState<WalletData | null>(null);
   
   const passkeyKitRef = useRef<PasskeyKitType | null>(null); // Properly typed PasskeyKit instance
 
@@ -63,6 +91,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         
         if (supported) {
           try {
+            // Also import SimpleWebAuthn browser functions for PasskeyKit
+            const { startRegistration, startAuthentication } = await import('@simplewebauthn/browser');
+            
             // Dynamically import PasskeyKit only if WebAuthn is supported
             const { PasskeyKit } = await import('passkey-kit');
             
@@ -71,34 +102,34 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               return;
             }
             
-            passkeyKitRef.current = new PasskeyKit({
-              rpcUrl: process.env.NEXT_PUBLIC_SOROBAN_RPC_URL || 'https://soroban-testnet.stellar.org:443',
-              networkPassphrase: 'Test SDF Network ; September 2015',
-              walletWasmHash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' // Sample hash - replace with actual hash
+            // Use configuration values
+            console.log("Initializing PasskeyKit with config:", {
+              rpcUrl: RPC_URL,
+              networkPassphrase: NETWORK_PASSPHRASE,
+              walletWasmHash: DUMMY_WALLET_WASM_HASH,
+              WebAuthn: { startRegistration, startAuthentication }
             });
             
-            // Verify required methods for our use case
+            passkeyKitRef.current = new PasskeyKit({
+              rpcUrl: RPC_URL,
+              networkPassphrase: NETWORK_PASSPHRASE,
+              walletWasmHash: DUMMY_WALLET_WASM_HASH,
+              timeoutInSeconds: 60, // Generous timeout for demo purposes
+              WebAuthn: { startRegistration, startAuthentication } // Use imported functions
+            });
+            
+            // Verify the instance is valid
             if (!passkeyKitRef.current) {
               console.error("PasskeyKit failed to initialize");
               setIsPasskeyKitInitialized(false);
               return;
             }
             
-            // Check if we can use the methods we need for our authentication
-            // We'll temporarily use any type for the methods we need to check
-            const kitInstance = passkeyKitRef.current as any;
-            if (!kitInstance.createKey || !kitInstance.connectWallet) {
-              console.error("PasskeyKit initialized but required methods are missing");
-              setIsPasskeyKitInitialized(false);
-              return;
-            }
-            
             setIsPasskeyKitInitialized(true);
-            console.log("PasskeyKit initialized and WebAuthn supported.");
+            console.log("PasskeyKit successfully initialized with WebAuthn support.");
           } catch (error) {
             console.error("Failed to load or initialize PasskeyKit:", error);
             setIsPasskeyKitInitialized(false); // Ensure it's false on error
-            // isPasskeySupported is already set based on browserSupportsWebAuthn()
           }
         } else {
           console.warn("WebAuthn is not supported by this browser.");
@@ -111,294 +142,223 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     const loadSession = async () => {
       const storedToken = localStorage.getItem(SESSION_TOKEN_LOCAL_STORAGE_KEY);
-      if (storedToken) {
-        setSessionToken(storedToken);
+      const storedUserData = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
+      const storedWalletData = localStorage.getItem(LOCAL_STORAGE_WALLET_KEY);
+      
+      if (storedToken && storedUserData) {
         try {
-          const headers = { 'Authorization': `Bearer ${storedToken}`, 'Content-Type': 'application/json' };
-          const response = await fetch('/api/user/me', { headers });
-          if (!response.ok) {
-            const errorBody = await response.json();
-            throw new Error(errorBody.error || 'Session fetch failed');
-          }
-          const data = await response.json();
-          if (data.user) {
-            setUser({ ...data.user, isLoggedIn: true });
-            const balanceHeaders = { 'Authorization': `Bearer ${storedToken}` }; // No content-type for GET
-            const balanceResponse = await fetch('/api/user/balance', { headers: balanceHeaders });
-            if(balanceResponse.ok) {
-                const balanceData: FetchedBalances = await balanceResponse.json();
-                setCurrentXlmBalance(balanceData.xlmBalance);
-                setUser(prev => prev ? ({...prev, platformBalanceXLM: parseFloat(balanceData.platformBalance)}) : null);
-            }
-          } else {
-            localStorage.removeItem(SESSION_TOKEN_LOCAL_STORAGE_KEY);
-            setSessionToken(null);
+          const userData = JSON.parse(storedUserData);
+          setSessionToken(storedToken);
+          setUser({ ...userData, isLoggedIn: true });
+          setCurrentXlmBalance('10000.0000000'); // Mock XLM balance for demo
+          
+          // Load wallet data if available
+          if (storedWalletData) {
+            setWalletData(JSON.parse(storedWalletData));
           }
         } catch (error) {
-          console.warn("Session load error:", error);
+          console.warn("Failed to load user/wallet data from localStorage:", error);
           localStorage.removeItem(SESSION_TOKEN_LOCAL_STORAGE_KEY);
+          localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
+          localStorage.removeItem(LOCAL_STORAGE_WALLET_KEY);
           setSessionToken(null);
           setUser(null);
+          setWalletData(null);
         }
       }
       setIsLoadingUser(false);
     };
+    
     loadSession();
   }, []);
 
-  const authedFetch = async (url: string, options: RequestInit = {}) => {
-    const token = sessionToken || localStorage.getItem(SESSION_TOKEN_LOCAL_STORAGE_KEY);
-    if (!token && !url.includes('/api/auth/passkey/')) { // Allow auth calls without token
-         // Only throw error if it's not an auth call that generates a token
-        if (!url.startsWith('/api/auth/passkey/register') && !url.startsWith('/api/auth/passkey/login')){
-            throw new Error("No session token available for authenticated request.");
-        }
-    }
-    const headers: HeadersInit = {
-      ...options.headers,
-      'Content-Type': 'application/json',
+  const handleAuthSuccess = (userData: ApiUser, token: string, walletInfo?: WalletData) => {
+    const userState: UserState = { 
+      ...userData, 
+      isLoggedIn: true 
     };
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    const response = await fetch(url, { ...options, headers });
-    if (!response.ok) {
-        let errorDetails = 'Unknown error';
-        try {
-            const errorBody = await response.json();
-            errorDetails = errorBody.error || errorBody.message || JSON.stringify(errorBody);
-        } catch (e) {
-            errorDetails = await response.text();
-        }
-        throw new Error(`API Error (${response.status}): ${errorDetails}`);
-    }
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.indexOf("application/json") !== -1) {
-        const text = await response.text();
-        return text ? JSON.parse(text) : {}; // Handle empty JSON response
-    }
-    return response.text(); 
-  };
-
-  const handleAuthSuccess = (apiUser: ApiUser, token: string, balances?: FetchedBalances) => {
-    setUser({ ...apiUser, isLoggedIn: true });
+    
+    setUser(userState);
     setSessionToken(token);
+    
+    // Store user data
     localStorage.setItem(SESSION_TOKEN_LOCAL_STORAGE_KEY, token);
-    if (balances) {
-      setCurrentXlmBalance(balances.xlmBalance);
-    } else {
-      fetchBalances(token); 
+    localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(userState));
+    
+    // Store wallet data if provided
+    if (walletInfo) {
+      setWalletData(walletInfo);
+      localStorage.setItem(LOCAL_STORAGE_WALLET_KEY, JSON.stringify(walletInfo));
     }
+    
+    console.log(`Auth success, token set: ${token}`);
   };
 
   const registerWithPasskey = async (username: string) => {
-    if (!isPasskeyKitInitialized || !passkeyKitRef.current) { // Check both state and ref
+    if (!isPasskeyKitInitialized || !passkeyKitRef.current) {
       alert("PasskeyKit is still initializing or not available. Please try again shortly.");
       return;
     }
     setIsLoading(true);
     try {
-      const challengePayload: PasskeyRegistrationChallenge & { rpId: string, userId?: string } = await fetch('/api/auth/passkey/register-challenge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
-      }).then(res => res.json());
-
-      // Using PasskeyKit's createKey method for registration
-      const passkeyKit = passkeyKitRef.current as any;
-      const attestationResponse = await passkeyKit.createKey(username, username, {
-        rpId: challengePayload.rpId
-      });
-
-      const verifyResponse = await fetch('/api/auth/passkey/register-verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          username, 
-          attestationResponse: attestationResponse.rawResponse, 
-          challenge: challengePayload.challenge 
-        }), 
-      });
-      if (!verifyResponse.ok) throw new Error(await verifyResponse.text());
-      const { user: registeredUser, success, token } = await verifyResponse.json(); 
+      // Using proper PasskeyKit createKey method for registration
+      const passkeyKit = passkeyKitRef.current;
+      const attestationResult = await passkeyKit.createKey(
+        "onlyfrens", // app name
+        username,    // username
+        {
+          rpId: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname,
+        }
+      );
       
-      if (success && registeredUser && token) {
-        handleAuthSuccess(registeredUser, token);
-        alert(`Welcome, ${registeredUser.username}!`);
+      console.log("PasskeyKit createKey result:", attestationResult);
+
+      // Store keyId for future wallet connections
+      if (attestationResult.keyIdBase64) {
+        // Create wallet data object to persist
+        const walletInfo: WalletData = {
+          keyIdBase64: attestationResult.keyIdBase64,
+          publicKey: attestationResult.keyIdBase64, // In a real app this would be the actual public key
+          smartWalletAddress: mockWalletAddress(username)
+        };
+        
+        // Create a mock user in localStorage
+        const newUserId = attestationResult.keyIdBase64;
+        const mockUser: ApiUser = {
+          id: newUserId,
+          username,
+          smartWalletAddress: mockWalletAddress(username),
+          platformBalanceXLM: 1000, // Initial balance for demo
+          subscriptions: [],
+          ownedNfts: [],
+          actionHistory: [],
+          passkeyCredentialId: attestationResult.keyIdBase64,
+          passkeyPublicKey: attestationResult.keyIdBase64, // In a real app this would be different
+        };
+        
+        // Generate a mock session token
+        const sessionToken = `session_${newUserId}_${Date.now()}`;
+        
+        handleAuthSuccess(mockUser, sessionToken, walletInfo);
+        alert(`Welcome, ${username}!`);
       } else {
-        throw new Error('Registration failed: No user data returned or verification error.');
+        throw new Error('Registration failed: No keyId returned from PasskeyKit');
       }
     } catch (error: any) {
-      console.error("Registration error in context:", error.message, error.stack);
+      console.error("Registration error:", error.message, error.stack);
       alert(`Registration Error: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loginWithPasskey = async (/* mockRawId?: string */) => {
-    if (!isPasskeyKitInitialized || !passkeyKitRef.current) { // Check both state and ref
+  const loginWithPasskey = async () => {
+    if (!isPasskeyKitInitialized || !passkeyKitRef.current) {
       alert("PasskeyKit is still initializing or not available. Please try again shortly.");
       return;
     }
     setIsLoading(true);
     try {
-      // For login, PasskeyKit usually doesn't need username upfront if discoverable credentials are used
-      console.log("Sending login challenge request...");
-      const challengeResponse = await fetch('/api/auth/passkey/login-challenge', { 
-          method: 'POST', 
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}), // Empty body or could include username for non-discoverable
-      });
+      // Try to get stored wallet data first
+      const storedWalletData = localStorage.getItem(LOCAL_STORAGE_WALLET_KEY);
+      let storedKeyId = null;
       
-      if (!challengeResponse.ok) {
-        const errorText = await challengeResponse.text();
-        console.error("Login challenge error:", challengeResponse.status, errorText);
-        throw new Error(`Login Error: Failed to fetch challenge - ${challengeResponse.status} ${errorText}`);
+      if (storedWalletData) {
+        const parsedWalletData = JSON.parse(storedWalletData);
+        storedKeyId = parsedWalletData.keyIdBase64;
       }
       
-      const challengePayload = await challengeResponse.json();
-      console.log("Challenge received:", challengePayload);
-
+      // Using proper PasskeyKit connectWallet method
+      const passkeyKit = passkeyKitRef.current;
+      
+      const connectOptions: any = {
+        rpId: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname
+      };
+      
+      // If we have a stored keyId, use it to help with wallet connection
+      if (storedKeyId) {
+        connectOptions.keyId = storedKeyId;
+      }
+      
+      console.log("Connecting wallet with options:", connectOptions);
+      
       try {
-        // Using a simplified approach with mockCredentialId for the hackathon
-        // This bypasses actual wallet connection for demo purposes
-        const mockCredentialId = localStorage.getItem('last_registered_credential_id');
+        const assertionResult = await passkeyKit.connectWallet(connectOptions);
+        console.log("Wallet connect result:", assertionResult);
         
-        if (!mockCredentialId) {
-          // If no credential ID stored, fall back to mock one
-          const mockResponse = {
-            rawResponse: {
-              id: "mock-credential-from-simplified-login",
-              rawId: "mock-credential-from-simplified-login"
-            }
+        if (assertionResult.keyIdBase64) {
+          // Create or update wallet data
+          const walletInfo: WalletData = {
+            keyIdBase64: assertionResult.keyIdBase64,
+            // In a real app we would set the actual public key and wallet address
+            publicKey: assertionResult.keyIdBase64,
+            smartWalletAddress: mockWalletAddress(assertionResult.keyIdBase64.substring(0, 8))
           };
           
-          const verifyResponse = await fetch('/api/auth/passkey/login-verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              assertionResponse: mockResponse.rawResponse, 
-              challenge: challengePayload.challenge 
-            }),
-          });
+          // Retrieve the user from localStorage or create one if it doesn't exist
+          const storedUserData = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
+          let userData: ApiUser;
           
-          if (!verifyResponse.ok) throw new Error(await verifyResponse.text());
-          const data = await verifyResponse.json();
-          
-          if (data.success && data.user && data.token) {
-            handleAuthSuccess(data.user, data.token);
-            alert(`Welcome back, ${data.user.username}!`);
-            return;
+          if (storedUserData) {
+            userData = JSON.parse(storedUserData);
           } else {
-            throw new Error('Login failed: User data not returned or verification error.');
+            // No stored user - create a mock user with a generic username
+            userData = {
+              id: assertionResult.keyIdBase64,
+              username: `user_${assertionResult.keyIdBase64.substring(0, 6)}`,
+              smartWalletAddress: mockWalletAddress(`user_${assertionResult.keyIdBase64.substring(0, 6)}`),
+              platformBalanceXLM: 1000,  // Demo balance
+              subscriptions: [],
+              ownedNfts: [],
+              actionHistory: [],
+              passkeyCredentialId: assertionResult.keyIdBase64,
+              passkeyPublicKey: assertionResult.keyIdBase64
+            };
           }
+          
+          // Generate a session token
+          const sessionToken = `session_${userData.id}_${Date.now()}`;
+          
+          handleAuthSuccess(userData, sessionToken, walletInfo);
+          alert(`Welcome back, ${userData.username}!`);
         } else {
-          // Use the stored credential ID from registration
-          const mockResponse = {
-            rawResponse: {
-              id: mockCredentialId,
-              rawId: mockCredentialId
-            }
-          };
-          
-          const verifyResponse = await fetch('/api/auth/passkey/login-verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              assertionResponse: mockResponse.rawResponse, 
-              challenge: challengePayload.challenge 
-            }),
-          });
-          
-          if (!verifyResponse.ok) throw new Error(await verifyResponse.text());
-          const data = await verifyResponse.json();
-          
-          if (data.success && data.user && data.token) {
-            handleAuthSuccess(data.user, data.token);
-            alert(`Welcome back, ${data.user.username}!`);
-            return;
-          } else {
-            throw new Error('Login failed: User data not returned or verification error.');
-          }
+          throw new Error('Login failed: No keyId returned from PasskeyKit');
         }
-      } catch (walletError) {
-        console.error("Wallet connection error:", walletError);
-        // Fall back to manual login for hackathon demo
-        alert("Simplified login process for hackathon demo will be used.");
-        
-        // Prompt for username to lookup user for demo purposes
-        const demoUsername = prompt("Enter username for demo login:");
-        if (!demoUsername) {
-          throw new Error("Username required for demo login");
-        }
-        
-        const demoLoginResponse = await fetch('/api/auth/passkey/demo-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: demoUsername }),
-        });
-        
-        if (!demoLoginResponse.ok) {
-          throw new Error(await demoLoginResponse.text());
-        }
-        
-        const demoData = await demoLoginResponse.json();
-        if (demoData.success && demoData.user && demoData.token) {
-          handleAuthSuccess(demoData.user, demoData.token);
-          alert(`Demo login successful. Welcome, ${demoData.user.username}!`);
-        } else {
-          throw new Error('Demo login failed: User not found or other error.');
-        }
+      } catch (e: any) {
+        console.error("PasskeyKit.connectWallet error:", e);
+        alert(`Login error: ${e.message}`);
       }
-    } catch (error: any) {
-      console.error("Login error in context:", error.message, error.stack);
-      alert(`Login Error: ${error.message}`);
+    } catch (e: any) {
+      console.error("Login error:", e);
+      alert(`Login failed: ${e.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   const logout = async () => {
-    setIsLoading(true);
     try {
-      await authedFetch('/api/auth/logout', { method: 'POST' });
-    } catch (error) {
-      console.warn("Logout API call failed:", error);
+      // Clear session data
+      localStorage.removeItem(SESSION_TOKEN_LOCAL_STORAGE_KEY);
+      // Don't clear user and wallet data to allow quick re-login
+      // localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
+      // localStorage.removeItem(LOCAL_STORAGE_WALLET_KEY);
+      
+      setSessionToken(null);
+      setUser(null);
+      
+      // Don't clear wallet data on logout so user can quickly log back in
+      // setWalletData(null);
+    } catch (e) {
+      console.error("Logout error:", e);
     }
-    setUser(null);
-    setSessionToken(null);
-    setCurrentXlmBalance('0.0000000');
-    localStorage.removeItem(SESSION_TOKEN_LOCAL_STORAGE_KEY);
-    setIsLoading(false);
-    console.log('[UserContext] Logged out.');
-    alert('You have been logged out.');
   };
 
-  const fetchBalances = async (tokenOverride?: string) => {
-    const token = tokenOverride || sessionToken;
-    if (!token && !user) return;
-    
-    setIsLoading(true);
-    try {
-      const headers: HeadersInit = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
-      
-      const response = await fetch('/api/user/balance', { headers });
-      if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(errorBody.error || 'Unknown error');
-      }
-      const data: FetchedBalances = await response.json();
-      setCurrentXlmBalance(data.xlmBalance);
-      setUser(prev => prev ? { ...prev, platformBalanceXLM: parseFloat(data.platformBalance) } : null);
-    } catch (error: any) {
-      console.error("Fetch balances error:", error);
-      alert(`Error fetching balances: ${error.message}`);
-    } finally {
-      setIsLoading(false);
+  const fetchBalances = async () => {
+    // Mock implementation - just update the UI with what we have
+    if (user) {
+      setCurrentXlmBalance('10000.0000000');
+      setUser(prev => prev ? { ...prev, platformBalanceXLM: prev.platformBalanceXLM } : null);
     }
   };
 
@@ -406,14 +366,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (!user) throw new Error("User not logged in");
     setIsLoading(true);
     try {
-      const data = await authedFetch('/api/contract/deposit', {
-        method: 'POST',
-        body: JSON.stringify({ amount }),
-      });
-      setUser(prev => prev ? { ...prev, platformBalanceXLM: parseFloat(data.newPlatformBalance) } : null);
-      setCurrentXlmBalance(data.newXlmBalance); // API returns illustrative new XLM balance
+      // Mock deposit - just update the local state
+      const newPlatformBalance = user.platformBalanceXLM + amount;
+      const newXlmBalance = (parseFloat(currentXlmBalance) - amount).toFixed(7);
+      
+      // Update user in state and localStorage
+      const updatedUser = { ...user, platformBalanceXLM: newPlatformBalance };
+      setUser(updatedUser);
+      setCurrentXlmBalance(newXlmBalance);
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
+      
       alert('Deposit Successful!');
-    } catch (error: any) { console.error(error); alert(`Deposit failed: ${error.message}`); }
+    } catch (error: any) { 
+      console.error(error); 
+      alert(`Deposit failed: ${error.message}`); 
+    }
     setIsLoading(false);
   };
 
@@ -421,14 +388,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (!user) throw new Error("User not logged in");
     setIsLoading(true);
     try {
-      const data = await authedFetch('/api/contract/withdraw', {
-        method: 'POST',
-        body: JSON.stringify({ amount }),
-      });
-      setUser(prev => prev ? { ...prev, platformBalanceXLM: parseFloat(data.newPlatformBalance) } : null);
-      setCurrentXlmBalance(data.newXlmBalance); // API returns illustrative new XLM balance
+      // Mock withdrawal - just update the local state
+      const newPlatformBalance = Math.max(0, user.platformBalanceXLM - amount);
+      const newXlmBalance = (parseFloat(currentXlmBalance) + amount).toFixed(7);
+      
+      // Update user in state and localStorage
+      const updatedUser = { ...user, platformBalanceXLM: newPlatformBalance };
+      setUser(updatedUser);
+      setCurrentXlmBalance(newXlmBalance);
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
+      
       alert('Withdrawal Successful!');
-    } catch (error: any) { console.error(error); alert(`Withdrawal failed: ${error.message}`); }
+    } catch (error: any) { 
+      console.error(error); 
+      alert(`Withdrawal failed: ${error.message}`); 
+    }
     setIsLoading(false);
   };
 
@@ -437,17 +411,31 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (user.platformBalanceXLM < price) throw new Error("Insufficient platform balance.");
     setIsLoading(true);
     try {
-      const data = await authedFetch('/api/contract/subscribe', {
-        method: 'POST',
-        body: JSON.stringify({ creatorId, price }),
-      });
-      setUser(prev => prev ? {
-        ...prev,
-        platformBalanceXLM: parseFloat(data.newPlatformBalance),
-        subscriptions: prev.subscriptions.filter(s => s.creatorId !== creatorId).concat([data.subscription]),
-      } : null);
+      // Mock subscription - create a subscription object and update balances
+      const newSubscription = {
+        creatorId,
+        subscribedSince: new Date().toISOString(),
+        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+      };
+      
+      const newPlatformBalance = user.platformBalanceXLM - price;
+      
+      // Add new subscription and update user
+      const updatedSubscriptions = [...user.subscriptions.filter(s => s.creatorId !== creatorId), newSubscription];
+      const updatedUser = { 
+        ...user, 
+        subscriptions: updatedSubscriptions, 
+        platformBalanceXLM: newPlatformBalance 
+      };
+      
+      setUser(updatedUser);
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
+      
       alert('Subscribed successfully!');
-    } catch (error: any) { console.error(error); alert(`Subscription failed: ${error.message}`); }
+    } catch (error: any) { 
+      console.error(error); 
+      alert(`Subscription failed: ${error.message}`); 
+    }
     setIsLoading(false);
   };
 
@@ -456,45 +444,106 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (user.platformBalanceXLM < amount) throw new Error("Insufficient platform balance.");
     setIsLoading(true);
     try {
-      const data = await authedFetch('/api/contract/tip', {
-        method: 'POST',
-        body: JSON.stringify({ creatorId, amount }),
-      });
-      setUser(prev => prev ? { ...prev, platformBalanceXLM: parseFloat(data.newPlatformBalance) } : null);
+      // Mock tip - just update the balance
+      const newPlatformBalance = user.platformBalanceXLM - amount;
+      
+      // Add action to history
+      const newAction: UserAction = {
+        id: `action_${Date.now()}`,
+        type: "TIP",
+        description: `Tipped creator ${creatorId} ${amount} XLM`,
+        timestamp: new Date().toISOString(),
+        targetId: creatorId,
+        amount: amount
+      };
+      
+      const updatedUser = { 
+        ...user, 
+        platformBalanceXLM: newPlatformBalance,
+        actionHistory: [newAction, ...user.actionHistory]
+      };
+      
+      setUser(updatedUser);
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
+      
       alert('Tip Successful!');
-    } catch (error: any) { console.error(error); alert(`Tip failed: ${error.message}`); }
+    } catch (error: any) { 
+      console.error(error); 
+      alert(`Tip failed: ${error.message}`); 
+    }
     setIsLoading(false);
   };
   
   const purchaseNft = async (nftPurchaseDetails: Omit<NftData, 'id' | 'purchaseDate' | 'contractAddress' | 'tokenId'> & { id: string, price: number, creatorId: string }) => {
     if (!user) throw new Error("User not logged in");
-    const { id: premiumContentId, price, creatorId: nftCreatorId, ...nftDetailsForApi } = nftPurchaseDetails;
+    const { price, creatorId } = nftPurchaseDetails;
+    
     if (user.platformBalanceXLM < price) throw new Error("Insufficient platform balance.");
     setIsLoading(true);
     try {
-      const data = await authedFetch('/api/contract/buy-nft', {
-        method: 'POST',
-        body: JSON.stringify({ premiumContentId, price, creatorId: nftCreatorId, nftDetailsForMinting: nftDetailsForApi }),
-      });
-      const newNft: NftData = data.nft;
-      setUser(prev => prev ? {
-        ...prev,
-        platformBalanceXLM: parseFloat(data.newPlatformBalance),
-        ownedNfts: prev.ownedNfts.filter(n => n.id !== newNft.id).concat([newNft]),
-      } : null);
+      // Mock NFT purchase - create NFT and update balances
+      const newNft: NftData = {
+        id: `nft_${Date.now()}`,
+        name: nftPurchaseDetails.name,
+        description: nftPurchaseDetails.description,
+        imageUrl: nftPurchaseDetails.imageUrl,
+        purchaseDate: new Date().toISOString(),
+        contractAddress: `mock_contract_${Date.now()}`,
+        tokenId: `token_${Date.now()}`,
+        creatorId,
+      };
+      
+      const newPlatformBalance = user.platformBalanceXLM - price;
+      
+      // Add new NFT and action to history
+      const newAction: UserAction = {
+        id: `action_${Date.now()}`,
+        type: "NFT_PURCHASE",
+        description: `Purchased NFT ${newNft.name}`,
+        timestamp: new Date().toISOString(),
+        targetId: newNft.id,
+        amount: -price
+      };
+      
+      const updatedUser = { 
+        ...user, 
+        platformBalanceXLM: newPlatformBalance,
+        ownedNfts: [...user.ownedNfts, newNft],
+        actionHistory: [newAction, ...user.actionHistory]
+      };
+      
+      setUser(updatedUser);
+      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
+      
       alert('NFT Purchased successfully!');
-    } catch (error: any) { console.error(error); alert(`NFT Purchase failed: ${error.message}`); }
+    } catch (error: any) { 
+      console.error(error); 
+      alert(`NFT Purchase failed: ${error.message}`); 
+    }
     setIsLoading(false);
   };
 
   return (
-    <UserContext.Provider value={{
-       user, currentXlmBalance, isLoading, isLoadingUser, sessionToken, isPasskeySupported, isPasskeyKitInitialized,
-       registerWithPasskey, loginWithPasskey, logout, 
-       depositToPlatform, withdrawFromPlatform,
-       subscribeToCreator, tipCreator, purchaseNft,
-       fetchBalances 
-    }}>
+    <UserContext.Provider
+      value={{
+        user,
+        currentXlmBalance,
+        isLoading,
+        isLoadingUser,
+        sessionToken,
+        isPasskeySupported,
+        isPasskeyKitInitialized,
+        registerWithPasskey,
+        loginWithPasskey,
+        logout,
+        depositToPlatform,
+        withdrawFromPlatform,
+        subscribeToCreator,
+        tipCreator,
+        purchaseNft,
+        fetchBalances
+      }}
+    >
       {children}
     </UserContext.Provider>
   );

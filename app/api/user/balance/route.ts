@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getUserByPasskeyId } from '@/lib/mockUserDb';
+import { getUserByPasskeyId, MOCK_USER_DB } from '@/lib/mockUserDb';
 
 // Placeholder for session management (same as in user/me)
 async function getUserIdFromSession(request: Request): Promise<string | null> {
   const mockSessionToken = request.headers.get('Authorization')?.split('Bearer ')?.[1];
   if (mockSessionToken) {
+    console.log(`Balance API: Got token: ${mockSessionToken}`);
     return mockSessionToken; // Assuming the token IS the userId (passkeyCredentialId)
   }
   return null;
@@ -14,22 +15,27 @@ export async function GET(request: Request) {
   try {
     const userId = await getUserIdFromSession(request);
     if (!userId) {
+      console.error("Balance API: No session token found");
       return NextResponse.json({ error: "Unauthorized: No session found" }, { status: 401 });
     }
 
+    console.log(`Balance API: Looking up user with ID: ${userId}`);
+    console.log(`Balance API: Available user IDs in DB: ${Object.keys(MOCK_USER_DB).join(', ')}`);
+    
     const user = await getUserByPasskeyId(userId);
     if (!user) {
+      console.error(`Balance API: User not found for ID: ${userId}`);
       return NextResponse.json({ error: "Unauthorized: User not found for session" }, { status: 401 });
     }
 
-    // In a real scenario, XLM balance might come from a Stellar SDK call to the user's smart wallet.
-    // For the hackathon, we can either make it static or also store/mock it in User object if it changes.
-    // The `platformBalanceXLM` is already in the User object.
-    const mockXlmBalance = '1000.0000000'; // Or derive if stored and modified elsewhere
+    console.log(`Balance API: Found user ${user.username} with platform balance: ${user.platformBalanceXLM}`);
+    
+    // Mock XLM balance for testing
+    const mockXlmBalance = '1000.0000000'; 
 
     return NextResponse.json({
-      xlmBalance: mockXlmBalance, // This is user's direct wallet balance (mocked)
-      platformBalance: user.platformBalanceXLM.toFixed(7) // This is user's balance in the platform contract
+      xlmBalance: mockXlmBalance, 
+      platformBalance: user.platformBalanceXLM.toFixed(7)
     });
 
   } catch (error) {
