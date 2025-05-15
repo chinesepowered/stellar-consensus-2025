@@ -59,11 +59,12 @@ const CreatorHero = ({ creator, onSupport, onUnlock, isLoggedIn }: any) => {
   return (
     <section className="relative">
       {/* Banner Image */}
-      <div className="h-64 w-full relative">
+      <div className="h-64 w-full relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10" />
-        <div 
-          className="w-full h-full bg-cover bg-center" 
-          style={{ backgroundImage: `url(${creator.bannerImageUrl})` }}
+        <img 
+          src={creator.bannerImageUrl} 
+          alt="Creator Banner"
+          className="w-full h-full object-cover"
         />
       </div>
       
@@ -142,16 +143,18 @@ const ContentPreview = ({ premiumContent, onPurchase }: any) => {
         <p className="text-gray-600 mt-1">Support this creator by purchasing exclusive content</p>
       </div>
       <div className="md:flex">
-        <div className="md:w-1/3 relative h-64 md:h-auto">
-          <img 
-            src={premiumContent.imageUrl} 
-            alt={premiumContent.name} 
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-            <span className="bg-indigo-600 text-white py-1 px-4 rounded-full font-bold">
-              {premiumContent.price} XLM
-            </span>
+        <div className="md:w-1/3 relative h-48 md:h-auto">
+          <div className="absolute inset-0">
+            <img 
+              src={premiumContent.imageUrl} 
+              alt={premiumContent.name} 
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+              <span className="bg-indigo-600 text-white py-1 px-4 rounded-full font-bold">
+                {premiumContent.price} XLM
+              </span>
+            </div>
           </div>
         </div>
         <div className="p-6 md:w-2/3">
@@ -192,11 +195,11 @@ const TimelinePosts = ({ posts, isSubscribed }: any) => {
                 <div className="flex-grow">
                   <p className="text-gray-700 mb-2">{post.content}</p>
                   {post.imageUrl && (
-                    <div className="mt-3 rounded-lg overflow-hidden">
+                    <div className="mt-3 rounded-lg overflow-hidden max-h-96">
                       <img 
                         src={post.imageUrl} 
                         alt="Post"
-                        className="w-full h-auto" 
+                        className="w-full h-auto object-cover" 
                       />
                     </div>
                   )}
@@ -218,7 +221,7 @@ const TimelinePosts = ({ posts, isSubscribed }: any) => {
       ) : (
         <div className="p-8 text-center">
           <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 inline-block mx-auto">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
             <h3 className="text-gray-700 font-medium mt-4">Subscribe to View Timeline</h3>
@@ -477,8 +480,8 @@ export default function HomePage() {
               </button>
             </div>
             <div className="p-6">
-              <div className="aspect-w-16 aspect-h-9 bg-gray-200 rounded-lg mb-4">
-                <div className="w-full h-full flex items-center justify-center text-gray-500">
+              <div className="relative pb-[56.25%] bg-gray-200 rounded-lg mb-4">
+                <div className="absolute inset-0 flex items-center justify-center text-gray-500">
                   [Video Player Placeholder]
                 </div>
               </div>

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import { User as ApiUser, NftData, UserAction, PasskeyRegistrationChallenge, PasskeyLoginChallenge } from '@/lib/types'; // Import standardized types
 import { browserSupportsWebAuthn } from '@simplewebauthn/browser'; // Import the support check
+import type { PasskeyKit as PasskeyKitType } from 'passkey-kit'; // Import the actual type
 
 const SESSION_TOKEN_LOCAL_STORAGE_KEY = 'onlyfrens_session_token';
 
@@ -51,7 +52,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [isPasskeySupported, setIsPasskeySupported] = useState(false); // Default to false until checked
   const [isPasskeyKitInitialized, setIsPasskeyKitInitialized] = useState(false);
   
-  const passkeyKitRef = useRef<any>(null); // PasskeyKit instance
+  const passkeyKitRef = useRef<PasskeyKitType | null>(null); // Properly typed PasskeyKit instance
 
   useEffect(() => {
     const initializePasskeyKitAndCheckSupport = async () => {
@@ -65,11 +66,33 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             // Dynamically import PasskeyKit only if WebAuthn is supported
             const { PasskeyKit } = await import('passkey-kit');
             
+            if (!PasskeyKit) {
+              console.error("PasskeyKit module was imported but PasskeyKit class is not available");
+              return;
+            }
+            
             passkeyKitRef.current = new PasskeyKit({
               rpcUrl: process.env.NEXT_PUBLIC_SOROBAN_RPC_URL || 'https://soroban-testnet.stellar.org:443',
               networkPassphrase: 'Test SDF Network ; September 2015',
               walletWasmHash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef' // Sample hash - replace with actual hash
             });
+            
+            // Verify required methods for our use case
+            if (!passkeyKitRef.current) {
+              console.error("PasskeyKit failed to initialize");
+              setIsPasskeyKitInitialized(false);
+              return;
+            }
+            
+            // Check if we can use the methods we need for our authentication
+            // We'll temporarily use any type for the methods we need to check
+            const kitInstance = passkeyKitRef.current as any;
+            if (!kitInstance.createKey || !kitInstance.connectWallet) {
+              console.error("PasskeyKit initialized but required methods are missing");
+              setIsPasskeyKitInitialized(false);
+              return;
+            }
+            
             setIsPasskeyKitInitialized(true);
             console.log("PasskeyKit initialized and WebAuthn supported.");
           } catch (error) {
@@ -169,8 +192,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const registerWithPasskey = async (username: string) => {
-    if (!isPasskeyKitInitialized) { // Check new state
-      alert("PasskeyKit is still initializing. Please try again shortly.");
+    if (!isPasskeyKitInitialized || !passkeyKitRef.current) { // Check both state and ref
+      alert("PasskeyKit is still initializing or not available. Please try again shortly.");
       return;
     }
     setIsLoading(true);
@@ -181,18 +204,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({ username }),
       }).then(res => res.json());
 
-      // PasskeyKit expects a specific structure for the user object within options
-      const passkeyKitOptions = {
-          user: { name: username, displayName: username, id: challengePayload.userId || username },
-          rpID: challengePayload.rpId
-      };
-
-      const attestationResponse = await passkeyKitRef.current.create(challengePayload.challenge, passkeyKitOptions);
+      // Using PasskeyKit's createKey method for registration
+      const passkeyKit = passkeyKitRef.current as any;
+      const attestationResponse = await passkeyKit.createKey(username, username, {
+        rpId: challengePayload.rpId
+      });
 
       const verifyResponse = await fetch('/api/auth/passkey/register-verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, attestationResponse, challenge: challengePayload.challenge }), 
+        body: JSON.stringify({ 
+          username, 
+          attestationResponse: attestationResponse.rawResponse, 
+          challenge: challengePayload.challenge 
+        }), 
       });
       if (!verifyResponse.ok) throw new Error(await verifyResponse.text());
       const { user: registeredUser, success } = await verifyResponse.json(); 
@@ -212,8 +237,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const loginWithPasskey = async (/* mockRawId?: string */) => {
-    if (!isPasskeyKitInitialized) { // Check new state
-      alert("PasskeyKit is still initializing. Please try again shortly.");
+    if (!isPasskeyKitInitialized || !passkeyKitRef.current) { // Check both state and ref
+      alert("PasskeyKit is still initializing or not available. Please try again shortly.");
       return;
     }
     setIsLoading(true);
@@ -235,14 +260,19 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       const challengePayload = await challengeResponse.json();
       console.log("Challenge received:", challengePayload);
 
-      const passkeyKitOptions = { rpID: challengePayload.rpId, allowCredentials: challengePayload.allowCredentials };
-
-      const assertionResponse = await passkeyKitRef.current.get(challengePayload.challenge, passkeyKitOptions);
+      // Using PasskeyKit's connectWallet method for authentication
+      const passkeyKit = passkeyKitRef.current as any;
+      const assertionResponse = await passkeyKit.connectWallet({
+        rpId: challengePayload.rpId
+      });
 
       const verifyResponse = await fetch('/api/auth/passkey/login-verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assertionResponse, challenge: challengePayload.challenge }),
+        body: JSON.stringify({ 
+          assertionResponse: assertionResponse.rawResponse, 
+          challenge: challengePayload.challenge 
+        }),
       });
       if (!verifyResponse.ok) throw new Error(await verifyResponse.text());
       const { user: loggedInUser, success } = await verifyResponse.json();
