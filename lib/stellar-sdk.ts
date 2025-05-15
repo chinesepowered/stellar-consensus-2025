@@ -1,5 +1,5 @@
 import { TransactionBuilder, Operation, Keypair, xdr, Account } from '@stellar/stellar-sdk';
-import { SorobanRpc } from '@stellar/stellar-sdk/rpc';
+import * as SorobanRpc from '@stellar/stellar-sdk/rpc';
 import { NETWORK_PASSPHRASE, RPC_URL } from './data';
 
 const server = new SorobanRpc.Server(RPC_URL, {
