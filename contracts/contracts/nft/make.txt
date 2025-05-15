@@ -1,0 +1,8 @@
+stellar contract build
+
+
+stellar contract deploy `
+  --wasm \code\consensus\contracts\target\wasm32v1-none\release\onlyfrens_nft.wasm `
+  --source chineseman `
+  --network testnet `
+  --alias onlyfrens-nft

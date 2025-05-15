@@ -1,86 +1,63 @@
 #![no_std]
-use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, Env, String, Symbol#[cfg(test)]
-mod test {
-    use super::*;
-    use soroban_sdk::{testutils::Address as _, vec, Env};
-
-    #[test]
-    fn test_nft_contract() {
-        let env = Env::default();
-        let contract_id = env.register_contract(None, NFTContract);
-        let client = NFTContractClient::new(&env, &contract_id);
-
-        let admin = Address::generate(&env);
-        let user = Address::generate(&env);
-
-        client.initialize(&admin);
-        
-        // Test minting
-        env.mock_all_auths();
-        let token_id = client.mint(
-            &admin,
-            &user,
-            &String::from_str(&env, "My NFT"),
-            &String::from_str(&env, "A test NFT"),
-            &String::from_str(&env, "https://example.com/image.jpg"),
-        );
-        
-        assert_eq!(token_id, 1);
-        
-        // Test ownership
-        let owner = client.owner_of(&token_id);
-        assert_eq!(owner, user);
-        
-        // Test metadata
-        let metadata = client.token_metadata(&token_id);
-        assert_eq!(metadata.name, String::from_str(&env, "My NFT"));
-        
-        // Test transfer
-        let new_user = Address::generate(&env);
-        env.mock_all_auths();
-        client.transfer(&user, &new_user, &token_id);
-        
-        let new_owner = client.owner_of(&token_id);
-        assert_eq!(new_owner, new_user);
-        
-        // Test total supply
-        let supply = client.total_supply();
-        assert_eq!(supply, 1);
-    }
+use soroban_sdk::{
+    contract, contractimpl, contracttype, Address, Env, String as SorobanString, Symbol,
 };
 
-#[contract]
-pub struct NFTContract;
-
-#[contracttype]
 #[derive(Clone)]
+#[contracttype]
 pub struct NFTMetadata {
-    name: String,
-    description: String,
-    image_url: String,
+    pub name: SorobanString,
+    pub description: SorobanString,
+    pub image_url: SorobanString,
 }
 
+#[derive(Clone)]
+#[contracttype]
+pub enum DataKey {
+    Admin,
+    TokenOwner(u32),
+    TokenMetadata(u32),
+    TotalSupply,
+}
+
+#[contract]
+pub struct NftContract;
+
 #[contractimpl]
-impl NFTContract {
+impl NftContract {
+    // Initialize the contract with an admin address
     pub fn initialize(env: Env, admin: Address) {
-        env.storage().instance().set(&symbol_short!("admin"), &admin);
-        env.storage().instance().set(&symbol_short!("tkn_cnt"), &0u32);
+        // Ensure contract is not already initialized
+        if env.storage().instance().has(&DataKey::Admin) {
+            panic!("contract has already been initialized");
+        }
+
+        // Set the admin address
+        env.storage().instance().set(&DataKey::Admin, &admin);
+        
+        // Initialize total supply to 0
+        env.storage().instance().set(&DataKey::TotalSupply, &0u32);
     }
 
+    // Mint a new NFT
     pub fn mint(
         env: Env,
         to: Address,
-        name: String,
-        description: String,
-        image_url: String,
+        name: SorobanString,
+        description: SorobanString,
+        image_url: SorobanString,
     ) -> u32 {
-        let admin: Address = env.storage().instance().get(&symbol_short!("admin")).unwrap();
-        
-        // Check authorization
+        // Only admin can mint
+        let admin: Address = env.storage().instance().get(&DataKey::Admin).unwrap();
         admin.require_auth();
-        
-        let token_count: u32 = env.storage().instance().get(&symbol_short!("tkn_cnt")).unwrap();
-        let new_token_id = token_count + 1;
+
+        // Get and update the total supply
+        let mut total_supply: u32 = env.storage().instance().get(&DataKey::TotalSupply).unwrap();
+        total_supply += 1;
+        let token_id = total_supply;
+
+        // Update total supply
+        env.storage().instance().set(&DataKey::TotalSupply, &total_supply);
 
         // Store token metadata
         let metadata = NFTMetadata {
@@ -88,104 +65,142 @@ impl NFTContract {
             description,
             image_url,
         };
-        
-        // Create storage keys with token ID
-        let token_sym = symbol_short!("t");
-        let t_id_key = Symbol::from_u32(&env, new_token_id);
-        env.storage().instance().set(&token_sym, &metadata);
-        env.storage().instance().set(&t_id_key, &metadata);
-        
-        // Set token ownership
-        let owner_sym = symbol_short!("o");
-        let o_id_key = Symbol::from_u32(&env, new_token_id);
-        env.storage().instance().set(&owner_sym, &to);
-        env.storage().instance().set(&o_id_key, &to);
-        
-        // Update token count
-        env.storage().instance().set(&symbol_short!("tkn_cnt"), &new_token_id);
-        
-        new_token_id
+        env.storage().instance().set(&DataKey::TokenMetadata(token_id), &metadata);
+
+        // Set token owner
+        env.storage().instance().set(&DataKey::TokenOwner(token_id), &to);
+
+        // Emit mint event
+        env.events()
+            .publish(
+                (Symbol::new(&env, "mint"), to),
+                token_id,
+            );
+
+        token_id
     }
 
+    // Transfer NFT to another address
     pub fn transfer(env: Env, from: Address, to: Address, token_id: u32) {
+        // Verify token exists
+        if !env.storage().instance().has(&DataKey::TokenOwner(token_id)) {
+            panic!("token does not exist");
+        }
+
+        // Verify that the sender is the current owner
+        let owner: Address = env.storage().instance().get(&DataKey::TokenOwner(token_id)).unwrap();
+        if owner != from {
+            panic!("sender is not the token owner");
+        }
+
+        // Require authorization from the sender
         from.require_auth();
-        
-        let o_id_key = Symbol::from_u32(&env, token_id);
-        let current_owner: Address = env.storage().instance().get(&o_id_key).unwrap();
-        
-        assert!(current_owner == from, "sender is not the owner");
-        
-        // Update ownership
-        env.storage().instance().set(&o_id_key, &to);
+
+        // Update token owner
+        env.storage().instance().set(&DataKey::TokenOwner(token_id), &to);
+
+        // Emit transfer event
+        env.events()
+            .publish(
+                (Symbol::new(&env, "transfer"), from, to),
+                token_id,
+            );
     }
 
-    pub fn owner_of(env: Env, token_id: u32) -> Address {
-        let o_id_key = Symbol::from_u32(&env, token_id);
-        env.storage().instance().get(&o_id_key).unwrap()
-    }
-
-    pub fn token_metadata(env: Env, token_id: u32) -> NFTMetadata {
-        let t_id_key = Symbol::from_u32(&env, token_id);
-        env.storage().instance().get(&t_id_key).unwrap()
-    }
-
+    // Get the total supply of NFTs
     pub fn total_supply(env: Env) -> u32 {
-        env.storage().instance().get(&symbol_short!("tkn_cnt")).unwrap()
+        env.storage().instance().get(&DataKey::TotalSupply).unwrap_or(0u32)
     }
-    
-    // Optional: Add token URI functionality
-    pub fn token_uri(env: Env, token_id: u32) -> String {
-        let metadata = Self::token_metadata(env.clone(), token_id);
+
+    // Get the owner of a token by ID
+    pub fn owner_of(env: Env, token_id: u32) -> Address {
+        if !env.storage().instance().has(&DataKey::TokenOwner(token_id)) {
+            panic!("token does not exist");
+        }
+        env.storage().instance().get(&DataKey::TokenOwner(token_id)).unwrap()
+    }
+
+    // Get the metadata of a token by ID
+    pub fn token_metadata(env: Env, token_id: u32) -> NFTMetadata {
+        if !env.storage().instance().has(&DataKey::TokenMetadata(token_id)) {
+            panic!("token does not exist");
+        }
+        env.storage().instance().get(&DataKey::TokenMetadata(token_id)).unwrap()
+    }
+
+    // Get the URI of a token (which is just the image_url in this case)
+    pub fn token_uri(env: Env, token_id: u32) -> SorobanString {
+        if !env.storage().instance().has(&DataKey::TokenMetadata(token_id)) {
+            panic!("token does not exist");
+        }
+        let metadata: NFTMetadata = env.storage().instance().get(&DataKey::TokenMetadata(token_id)).unwrap();
         metadata.image_url
+    }
+
+    // Get the admin address
+    pub fn get_admin(env: Env) -> Address {
+        env.storage().instance().get(&DataKey::Admin).unwrap()
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use soroban_sdk::{testutils::Address as _, vec, Env};
+    use soroban_sdk::{testutils::Address as _, Env};
 
     #[test]
     fn test_nft_contract() {
         let env = Env::default();
-        let contract_id = env.register_contract(None, NFTContract);
-        let client = NFTContractClient::new(&env, &contract_id);
+        let contract_id = env.register_contract(None, NftContract);
+        let client = NftContractClient::new(&env, &contract_id);
 
+        // Test accounts
         let admin = Address::generate(&env);
-        let user = Address::generate(&env);
+        let user1 = Address::generate(&env);
+        let user2 = Address::generate(&env);
 
+        // Initialize the contract
         client.initialize(&admin);
-        
-        // Test minting
+        assert_eq!(client.get_admin(), admin);
+        assert_eq!(client.total_supply(), 0);
+
+        // Mint an NFT
         env.mock_all_auths();
         let token_id = client.mint(
-            &admin,
-            &user,
-            &String::from_str(&env, "My NFT"),
-            &String::from_str(&env, "A test NFT"),
-            &String::from_str(&env, "https://example.com/image.jpg"),
+            &user1,
+            &SorobanString::from_str(&env, "Cool NFT"),
+            &SorobanString::from_str(&env, "A very cool NFT for testing"),
+            &SorobanString::from_str(&env, "https://example.com/nft.png"),
         );
-        
         assert_eq!(token_id, 1);
-        
-        // Test ownership
-        let owner = client.owner_of(&token_id);
-        assert_eq!(owner, user);
-        
-        // Test metadata
+        assert_eq!(client.total_supply(), 1);
+        assert_eq!(client.owner_of(&token_id), user1);
+
+        // Check metadata
         let metadata = client.token_metadata(&token_id);
-        assert_eq!(metadata.name, String::from_str(&env, "My NFT"));
-        
-        // Test transfer
-        let new_user = Address::generate(&env);
+        assert_eq!(metadata.name, SorobanString::from_str(&env, "Cool NFT"));
+        assert_eq!(metadata.description, SorobanString::from_str(&env, "A very cool NFT for testing"));
+        assert_eq!(metadata.image_url, SorobanString::from_str(&env, "https://example.com/nft.png"));
+
+        // Check URI
+        let uri = client.token_uri(&token_id);
+        assert_eq!(uri, SorobanString::from_str(&env, "https://example.com/nft.png"));
+
+        // Transfer NFT
         env.mock_all_auths();
-        client.transfer(&user, &new_user, &token_id);
-        
-        let new_owner = client.owner_of(&token_id);
-        assert_eq!(new_owner, new_user);
-        
-        // Test total supply
-        let supply = client.total_supply();
-        assert_eq!(supply, 1);
+        client.transfer(&user1, &user2, &token_id);
+        assert_eq!(client.owner_of(&token_id), user2);
+
+        // Mint another NFT
+        env.mock_all_auths();
+        let token_id2 = client.mint(
+            &user2,
+            &SorobanString::from_str(&env, "Second NFT"),
+            &SorobanString::from_str(&env, "Another cool NFT"),
+            &SorobanString::from_str(&env, "https://example.com/nft2.png"),
+        );
+        assert_eq!(token_id2, 2);
+        assert_eq!(client.total_supply(), 2);
+        assert_eq!(client.owner_of(&token_id2), user2);
     }
 }
