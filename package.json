@@ -9,16 +9,26 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@stellar/stellar-sdk": "^13.3.0",
+    "next": "15.3.2",
+    "passkey-kit": "^0.10.24",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "next": "15.3.2"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+    "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
+    "@rollup/plugin-inject": "^5.0.5",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4"
-  }
+    "buffer": "^6.0.3",
+    "path": "^0.12.7",
+    "svelte-local-storage-store": "^0.6.4",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "uuid": "^11.1.0"
+  },
+  "packageManager": "pnpm@9.13.2+sha512.88c9c3864450350e65a33587ab801acf946d7c814ed1134da4a924f6df5a2120fd36b46aab68f7cd1d413149112d53c7db3a4136624cfd00ff1846a0c6cef48a"
 }
