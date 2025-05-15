@@ -1,87 +1,88 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { useWallet } from '../contexts/WalletContext';
+import { useUser } from '@/contexts/UserContext';
+import PasskeyAuth from '@/components/auth/PasskeyAuth';
 
 const Navbar = () => {
-  const { isLoggedIn, userAddress, login, logout } = useWallet();
+  const { user, logout, currentXlmBalance } = useUser();
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const handleLogin = async () => {
-    // You might want to prompt for a username if your PasskeyKit setup requires it for `createPasskey`
-    // const username = prompt("Enter a username for passkey (can be anything for this demo):");
-    // if (username) {
-    //   await login(username);
-    // }
-    await login(); // Simplified login call, assumes defaultUser or no username needed for demo
+  const handleAuthComplete = () => {
+    setShowAuthModal(false);
   };
 
   return (
-    <nav style={navStyles}>
-      <div style={navBrandStyles}>
-        <Link href="/" style={linkStyles}>OnlyFrens</Link>
-      </div>
-      <div style={navLinksStyles}>
-        {isLoggedIn && userAddress && (
-          <Link href="/profile" style={linkStyles}>My Profile</Link>
-        )}
-        {isLoggedIn ? (
-          <div style={userInfoStyles}>
-            <span style={userAddressStyles}>{`Logged in: ${userAddress ? `${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}` : 'N/A'}`}</span>
-            <button onClick={logout} style={buttonStyles}>Logout</button>
+    <nav className="bg-white shadow-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex items-center">
+            <Link href="/" className="flex-shrink-0 flex items-center">
+              <span className="text-indigo-600 font-bold text-xl">OnlyFrens</span>
+            </Link>
+            <span className="ml-2 text-gray-500 text-sm">Support Uplifting Creators</span>
           </div>
-        ) : (
-          <button onClick={handleLogin} style={buttonStyles}>Login with Passkey</button>
-        )}
+          
+          <div className="flex items-center gap-4">
+            {user && user.isLoggedIn ? (
+              <>
+                <div className="hidden md:block">
+                  <div className="flex items-center space-x-4">
+                    <div className="text-sm text-gray-700">
+                      <span className="bg-gray-100 px-2 py-1 rounded-md">
+                        {currentXlmBalance} XLM
+                      </span>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-gray-500">@{user.username}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex space-x-2">
+                  <Link 
+                    href="/wallet" 
+                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Wallet
+                  </Link>
+                  
+                  <button
+                    onClick={() => logout()}
+                    className="inline-flex items-center px-3 py-1 border border-gray-300 text-sm leading-5 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Sign In with Passkey
+              </button>
+            )}
+          </div>
+        </div>
       </div>
+      
+      {/* Passkey Auth Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl overflow-hidden max-w-md w-full">
+            <div className="p-4 bg-indigo-50 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-800">Sign in or Register</h2>
+            </div>
+            <div className="p-6">
+              <PasskeyAuth onAuthComplete={handleAuthComplete} />
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
-};
-
-// Basic inline styles for simplicity in a hackathon
-const navStyles: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '1rem 2rem',
-  backgroundColor: '#fff',
-  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-  marginBottom: '20px',
-};
-
-const navBrandStyles: React.CSSProperties = {
-  fontSize: '1.5rem',
-  fontWeight: 'bold',
-};
-
-const linkStyles: React.CSSProperties = {
-  textDecoration: 'none',
-  color: '#0070f3',
-  marginRight: '1rem',
-};
-
-const navLinksStyles: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-};
-
-const userInfoStyles: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-};
-
-const userAddressStyles: React.CSSProperties = {
-  marginRight: '1rem',
-  fontSize: '0.9rem',
-  color: '#555',
-};
-
-const buttonStyles: React.CSSProperties = {
-  padding: '0.5rem 1rem',
-  backgroundColor: '#0070f3',
-  color: 'white',
-  border: 'none',
-  borderRadius: '5px',
-  cursor: 'pointer',
-  fontSize: '0.9rem',
 };
 
 export default Navbar; 
