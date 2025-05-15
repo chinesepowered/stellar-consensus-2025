@@ -47,15 +47,15 @@ export async function POST(request: Request) {
     console.log(` MOCK: User ${user.username} logged in successfully with credential ID ${MOCK_CREDENTIAL_ID}`);
 
     // --- TODO: 3. Session Management ---
-    // Upon successful login, establish a session (e.g., using JWT in an HttpOnly cookie)
-    // For now, just return user info.
+    // In our implementation, the session token is the user's ID
+    // Remove sensitive data before returning to client
     const { passkeyCredentialId, passkeyPublicKey, ...userResponse } = user;
+    const sessionToken = user.id; // Using user ID as session token
 
     return NextResponse.json({
       success: true,
       user: userResponse,
-      // In a real app, you'd set an HttpOnly cookie for the session here.
-      // Example: token: "mock-session-token-for-" + user.id 
+      token: sessionToken, // Explicitly include the token in the response
     });
 
   } catch (error) {

@@ -38,7 +38,7 @@ interface UserContextType {
   subscribeToCreator: (creatorId: string, price: number) => Promise<void>;
   tipCreator: (creatorId: string, amount: number) => Promise<void>;
   purchaseNft: (nftDetails: Omit<NftData, 'id' | 'purchaseDate' | 'contractAddress' | 'tokenId'> & { id: string, price: number, creatorId: string }) => Promise<void>;
-  fetchBalances: () => Promise<void>;
+  fetchBalances: (tokenOverride?: string) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -185,9 +185,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setSessionToken(token);
     localStorage.setItem(SESSION_TOKEN_LOCAL_STORAGE_KEY, token);
     if (balances) {
-        setCurrentXlmBalance(balances.xlmBalance);
+      setCurrentXlmBalance(balances.xlmBalance);
     } else {
-        fetchBalances(token); 
+      fetchBalances(token); 
     }
   };
 
@@ -220,10 +220,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         }), 
       });
       if (!verifyResponse.ok) throw new Error(await verifyResponse.text());
-      const { user: registeredUser, success } = await verifyResponse.json(); 
+      const { user: registeredUser, success, token } = await verifyResponse.json(); 
       
-      if (success && registeredUser && registeredUser.id) {
-        handleAuthSuccess(registeredUser, registeredUser.id);
+      if (success && registeredUser && token) {
+        handleAuthSuccess(registeredUser, token);
         alert(`Welcome, ${registeredUser.username}!`);
       } else {
         throw new Error('Registration failed: No user data returned or verification error.');
@@ -260,28 +260,96 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       const challengePayload = await challengeResponse.json();
       console.log("Challenge received:", challengePayload);
 
-      // Using PasskeyKit's connectWallet method for authentication
-      const passkeyKit = passkeyKitRef.current as any;
-      const assertionResponse = await passkeyKit.connectWallet({
-        rpId: challengePayload.rpId
-      });
-
-      const verifyResponse = await fetch('/api/auth/passkey/login-verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          assertionResponse: assertionResponse.rawResponse, 
-          challenge: challengePayload.challenge 
-        }),
-      });
-      if (!verifyResponse.ok) throw new Error(await verifyResponse.text());
-      const { user: loggedInUser, success } = await verifyResponse.json();
-
-      if (success && loggedInUser && loggedInUser.id) {
-        handleAuthSuccess(loggedInUser, loggedInUser.id);
-        alert(`Welcome back, ${loggedInUser.username}!`);
-      } else {
-        throw new Error('Login failed: User data not returned or verification error.');
+      try {
+        // Using a simplified approach with mockCredentialId for the hackathon
+        // This bypasses actual wallet connection for demo purposes
+        const mockCredentialId = localStorage.getItem('last_registered_credential_id');
+        
+        if (!mockCredentialId) {
+          // If no credential ID stored, fall back to mock one
+          const mockResponse = {
+            rawResponse: {
+              id: "mock-credential-from-simplified-login",
+              rawId: "mock-credential-from-simplified-login"
+            }
+          };
+          
+          const verifyResponse = await fetch('/api/auth/passkey/login-verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              assertionResponse: mockResponse.rawResponse, 
+              challenge: challengePayload.challenge 
+            }),
+          });
+          
+          if (!verifyResponse.ok) throw new Error(await verifyResponse.text());
+          const data = await verifyResponse.json();
+          
+          if (data.success && data.user && data.token) {
+            handleAuthSuccess(data.user, data.token);
+            alert(`Welcome back, ${data.user.username}!`);
+            return;
+          } else {
+            throw new Error('Login failed: User data not returned or verification error.');
+          }
+        } else {
+          // Use the stored credential ID from registration
+          const mockResponse = {
+            rawResponse: {
+              id: mockCredentialId,
+              rawId: mockCredentialId
+            }
+          };
+          
+          const verifyResponse = await fetch('/api/auth/passkey/login-verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              assertionResponse: mockResponse.rawResponse, 
+              challenge: challengePayload.challenge 
+            }),
+          });
+          
+          if (!verifyResponse.ok) throw new Error(await verifyResponse.text());
+          const data = await verifyResponse.json();
+          
+          if (data.success && data.user && data.token) {
+            handleAuthSuccess(data.user, data.token);
+            alert(`Welcome back, ${data.user.username}!`);
+            return;
+          } else {
+            throw new Error('Login failed: User data not returned or verification error.');
+          }
+        }
+      } catch (walletError) {
+        console.error("Wallet connection error:", walletError);
+        // Fall back to manual login for hackathon demo
+        alert("Simplified login process for hackathon demo will be used.");
+        
+        // Prompt for username to lookup user for demo purposes
+        const demoUsername = prompt("Enter username for demo login:");
+        if (!demoUsername) {
+          throw new Error("Username required for demo login");
+        }
+        
+        const demoLoginResponse = await fetch('/api/auth/passkey/demo-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: demoUsername }),
+        });
+        
+        if (!demoLoginResponse.ok) {
+          throw new Error(await demoLoginResponse.text());
+        }
+        
+        const demoData = await demoLoginResponse.json();
+        if (demoData.success && demoData.user && demoData.token) {
+          handleAuthSuccess(demoData.user, demoData.token);
+          alert(`Demo login successful. Welcome, ${demoData.user.username}!`);
+        } else {
+          throw new Error('Demo login failed: User not found or other error.');
+        }
       }
     } catch (error: any) {
       console.error("Login error in context:", error.message, error.stack);
@@ -308,10 +376,22 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const fetchBalances = async (tokenOverride?: string) => {
-    if (!user && !tokenOverride) return;
+    const token = tokenOverride || sessionToken;
+    if (!token && !user) return;
+    
     setIsLoading(true);
     try {
-      const data: FetchedBalances = await authedFetch('/api/user/balance', { method: 'GET' });
+      const headers: HeadersInit = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
+      
+      const response = await fetch('/api/user/balance', { headers });
+      if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(errorBody.error || 'Unknown error');
+      }
+      const data: FetchedBalances = await response.json();
       setCurrentXlmBalance(data.xlmBalance);
       setUser(prev => prev ? { ...prev, platformBalanceXLM: parseFloat(data.platformBalance) } : null);
     } catch (error: any) {
