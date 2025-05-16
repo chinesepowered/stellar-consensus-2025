@@ -1,16 +1,27 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import PasskeyAuth from '@/components/auth/PasskeyAuth';
 
 export default function WalletPage() {
-  const { user, currentXlmBalance, depositToPlatform, withdrawFromPlatform, isLoading } = useUser();
+  const { user, currentXlmBalance, depositToPlatform, withdrawFromPlatform, isLoading, fetchBalances } = useUser();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [amount, setAmount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
   const [copySuccess, setCopySuccess] = useState(false);
+  const [newSignerName, setNewSignerName] = useState('');
+  const [walletSigners, setWalletSigners] = useState([]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const addressRef = useRef<HTMLInputElement>(null);
+
+  // Fetch balances when component mounts
+  useEffect(() => {
+    if (user?.isLoggedIn && user.smartWalletAddress) {
+      console.log("Fetching balances on wallet page mount");
+      fetchBalances();
+    }
+  }, [user?.isLoggedIn, user?.smartWalletAddress, fetchBalances]);
 
   const copyToClipboard = () => {
     if (addressRef.current) {
@@ -18,6 +29,89 @@ export default function WalletPage() {
       document.execCommand('copy');
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
+    }
+  };
+
+  const handleRefreshBalance = () => {
+    fetchBalances();
+  };
+
+  // Advanced wallet functions
+  const fundWallet = async () => {
+    if (!window.passkeyKitWallet) {
+      alert("Passkey wallet not available. This feature requires direct access to the PasskeyKit instance.");
+      return;
+    }
+    
+    try {
+      const amount = 100; // 100 XLM
+      alert(`This would send ${amount} test XLM to your wallet in a real implementation.`);
+      
+      // This would be implemented with real code in a production version
+      /*
+      // We would need access to the fundPubkey and fundSigner from the demo
+      const { built, ...transfer } = await native.transfer({
+        to: contractId,
+        from: fundPubkey,
+        amount: BigInt(amount * 10_000_000),
+      });
+
+      await transfer.signAuthEntries({
+        address: fundPubkey,
+        signAuthEntry: fundSigner.signAuthEntry,
+      });
+
+      const res = await server.send(built!);
+      console.log(res);
+      
+      await fetchBalances();
+      */
+      
+      // For demo, just update the balance
+      alert("Wallet funded with test XLM!");
+      fetchBalances();
+    } catch (error) {
+      console.error("Error funding wallet:", error);
+      alert(`Failed to fund wallet: ${error.message}`);
+    }
+  };
+  
+  const addNewSigner = async () => {
+    if (!newSignerName || !newSignerName.trim()) {
+      alert("Please enter a name for the new signer");
+      return;
+    }
+    
+    try {
+      alert(`This would create a new signer named "${newSignerName}" with a new passkey in a real implementation.`);
+      
+      // This would be implemented with real code in a production version
+      /*
+      const { keyId: kid, publicKey } = await account.createKey(
+        "OnlyFrens",
+        newSignerName,
+      );
+
+      const at = await account.addSecp256r1(kid, publicKey, undefined, SignerStore.Temporary);
+      await account.sign(at, { keyId: adminSigner });
+      
+      await getWalletSigners();
+      */
+      
+      setNewSignerName('');
+      alert(`New signer "${newSignerName}" would be added!`);
+    } catch (error) {
+      console.error("Error adding signer:", error);
+      alert(`Failed to add signer: ${error.message}`);
+    }
+  };
+  
+  const resetWallet = () => {
+    if (confirm("This will remove all stored wallet data. Are you sure?")) {
+      localStorage.removeItem("onlyfrens_wallet_data");
+      localStorage.removeItem("onlyfrens_session_token");
+      localStorage.removeItem("onlyfrens_user_data");
+      alert("Wallet data reset. Please refresh the page to log in again.");
     }
   };
 
@@ -137,6 +231,19 @@ export default function WalletPage() {
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         {/* Balances */}
         <div className="p-6 border-b">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Your Balances</h3>
+            <button 
+              onClick={handleRefreshBalance}
+              className="flex items-center text-indigo-600 hover:text-indigo-800"
+              disabled={isLoading}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 mr-1 ${isLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {isLoading ? 'Refreshing...' : 'Refresh Balance'}
+            </button>
+          </div>
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-lg">
               <h3 className="text-sm font-medium text-indigo-800 mb-1">XLM Wallet Balance</h3>
@@ -273,6 +380,150 @@ export default function WalletPage() {
             Transaction history will appear here
           </div>
         </div>
+      </div>
+      
+      {/* Advanced Wallet Functions */}
+      <div className="mt-8">
+        <button 
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="flex items-center text-gray-700 font-medium mb-4"
+        >
+          <span className="mr-2">
+            {showAdvanced ? (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            )}
+          </span>
+          Advanced Wallet Functions {showAdvanced ? '(Hide)' : '(Show)'}
+        </button>
+        
+        {showAdvanced && (
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
+            <div className="p-6 border-b bg-gray-50">
+              <h3 className="text-lg font-semibold text-gray-800 mb-1">Advanced Wallet Management</h3>
+              <p className="text-sm text-gray-500">These functions mimic the PasskeyKit demo functionality</p>
+            </div>
+            
+            <div className="p-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Left column - Wallet actions */}
+                <div>
+                  <h4 className="font-medium text-gray-800 mb-4">Wallet Actions</h4>
+                  
+                  <div className="space-y-4">
+                    {/* Fund wallet */}
+                    <div>
+                      <button
+                        onClick={fundWallet}
+                        disabled={isLoading}
+                        className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Fund Wallet with 100 Test XLM
+                      </button>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Adds test XLM to your wallet (simulated for hackathon)
+                      </p>
+                    </div>
+                    
+                    {/* Refresh wallet balance */}
+                    <div>
+                      <button
+                        onClick={handleRefreshBalance}
+                        disabled={isLoading}
+                        className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isLoading ? 'Refreshing...' : 'Refresh Wallet Balance'}
+                      </button>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Gets the latest balance from your wallet
+                      </p>
+                    </div>
+                    
+                    {/* Reset wallet */}
+                    <div>
+                      <button
+                        onClick={resetWallet}
+                        className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition"
+                      >
+                        Reset Wallet Data
+                      </button>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Warning: Removes all locally stored wallet data
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Right column - Manage signers */}
+                <div>
+                  <h4 className="font-medium text-gray-800 mb-4">Manage Signers</h4>
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                    <p className="text-sm text-gray-600">
+                      Passkey wallet supports multiple signers. You can add additional passkeys as signers to your wallet.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {/* Add new signer */}
+                    <div>
+                      <label htmlFor="new-signer" className="block text-sm font-medium text-gray-700 mb-1">
+                        New Signer Name
+                      </label>
+                      <div className="flex">
+                        <input
+                          type="text"
+                          id="new-signer"
+                          value={newSignerName}
+                          onChange={(e) => setNewSignerName(e.target.value)}
+                          placeholder="Enter name for new signer"
+                          className="flex-1 p-2 border border-gray-300 rounded-l-md"
+                        />
+                        <button
+                          onClick={addNewSigner}
+                          disabled={!newSignerName}
+                          className="bg-indigo-600 text-white px-4 py-2 rounded-r-md hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Add Signer
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Signers list would go here - simplified for hackathon */}
+                    <div className="border rounded-md p-4">
+                      <p className="text-sm text-center text-gray-500">
+                        You currently have 1 active signer (your primary passkey)
+                      </p>
+                      <p className="text-xs text-center text-gray-400 mt-2">
+                        In a production app, you would see a list of signers here with options to manage them
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 bg-yellow-50 border-t border-yellow-100">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">
+                    These advanced functions are simplified for the hackathon demo. In a production app, they would interact directly with the Stellar network.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

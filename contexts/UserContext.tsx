@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import { User as ApiUser, NftData, UserAction } from '@/lib/types'; // Import standardized types
 import { browserSupportsWebAuthn } from '@simplewebauthn/browser'; // Import the support check
-import type { PasskeyKit as PasskeyKitType } from 'passkey-kit'; // Import the actual type
+import { PasskeyKit as PasskeyKitType, SACClient } from 'passkey-kit'; // Import the actual type
 
 // System account that will receive deposits
 const SYSTEM_ACCOUNT_ADDRESS = 'GDXCCSIV6E3XYB45NCPPBR4BUJZEI3GPV2YNXF2XIQO2DVCDID76SHFG';
@@ -21,6 +21,9 @@ const NFT_CONTRACT_ID = 'CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4W
 const DUMMY_SUBSCRIPTION_CONTRACT_ID = 'CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV';
 const DUMMY_TIPJAR_CONTRACT_ID = 'CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV';
 const DUMMY_NFT_MINT_CONTRACT_ID = 'CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR';
+
+// Native token contract ID (XLM)
+const NATIVE_TOKEN_CONTRACT_ID = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
 
 // Local storage keys
 const SESSION_TOKEN_LOCAL_STORAGE_KEY = 'onlyfrens_session_token';
@@ -96,6 +99,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [walletData, setWalletData] = useState<WalletData | null>(null);
   
   const passkeyKitRef = useRef<PasskeyKitType | null>(null); // Properly typed PasskeyKit instance
+  const sacClientRef = useRef<SACClient | null>(null);
+  const nativeTokenRef = useRef<any | null>(null);
 
   useEffect(() => {
     const initializePasskeyKitAndCheckSupport = async () => {
@@ -110,7 +115,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             const { startRegistration, startAuthentication } = await import('@simplewebauthn/browser');
             
             // Dynamically import PasskeyKit only if WebAuthn is supported
-            const { PasskeyKit } = await import('passkey-kit');
+            const { PasskeyKit, SACClient } = await import('passkey-kit');
             
             if (!PasskeyKit) {
               console.error("PasskeyKit module was imported but PasskeyKit class is not available");
@@ -132,6 +137,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               timeoutInSeconds: 60, // Generous timeout for demo purposes
               WebAuthn: { startRegistration, startAuthentication } // Use imported functions
             });
+            
+            // Initialize SAC client for native balance checking
+            sacClientRef.current = new SACClient({
+              rpcUrl: RPC_URL,
+              networkPassphrase: NETWORK_PASSPHRASE,
+            });
+            
+            // Get native token client for XLM operations
+            nativeTokenRef.current = sacClientRef.current.getSACClient(NATIVE_TOKEN_CONTRACT_ID);
             
             // Verify the instance is valid
             if (!passkeyKitRef.current) {
@@ -206,6 +220,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (walletInfo) {
       setWalletData(walletInfo);
       localStorage.setItem(LOCAL_STORAGE_WALLET_KEY, JSON.stringify(walletInfo));
+      
+      // Set a timeout to fetch balances after wallet info is saved
+      setTimeout(() => {
+        console.log("Fetching balances after successful authentication");
+        fetchBalances();
+      }, 500);
     }
     
     console.log(`Auth success, token set: ${token}`);
@@ -429,43 +449,80 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchBalances = async () => {
     // Only fetch if user is logged in and has a wallet address
-    if (!user || !user.smartWalletAddress) return;
+    if (!user || !user.smartWalletAddress) {
+      console.log("Cannot fetch balances: user not logged in or no wallet address");
+      return;
+    }
     
+    console.log(`Fetching balance for wallet address: ${user.smartWalletAddress}`);
     setIsLoading(true);
+    
     try {
-      // Fetch real wallet balance from Stellar horizon
-      const response = await fetch(`https://horizon-testnet.stellar.org/accounts/${user.smartWalletAddress}`);
+      if (!nativeTokenRef.current) {
+        console.error("Native token client not initialized");
+        throw new Error("Wallet services not fully initialized");
+      }
       
-      if (!response.ok) {
-        if (response.status === 404) {
-          // Account not found/not activated yet
-          console.log("Account not found. May need activation.");
-          setCurrentXlmBalance('0.0000000');
-        } else {
-          throw new Error(`Failed to fetch balance: ${response.statusText}`);
+      // Use the SACClient to get the native balance directly from the contract
+      console.log("Fetching balance using PasskeyKit SACClient...");
+      
+      const { result } = await nativeTokenRef.current.balance({ 
+        id: user.smartWalletAddress 
+      });
+      
+      if (result) {
+        // Convert from stroop (10^-7) to XLM
+        const balanceInXLM = (Number(result) / 10_000_000).toFixed(7);
+        console.log(`Raw balance result: ${result}, converted to: ${balanceInXLM} XLM`);
+        
+        setCurrentXlmBalance(balanceInXLM);
+        
+        // If balance is 0, let user know account may need activation
+        if (Number(result) === 0) {
+          console.log("Account has 0 balance. It may need activation with testnet XLM.");
+          alert("Your wallet address is valid but has 0 XLM. You need to fund it with testnet XLM to activate it.");
         }
       } else {
-        const accountData = await response.json();
-        
-        // Find XLM balance in the balances array
-        const xlmBalance = accountData.balances.find(
-          (balance: any) => balance.asset_type === 'native'
-        );
-        
-        if (xlmBalance) {
-          setCurrentXlmBalance(xlmBalance.balance);
-          console.log(`Real XLM balance fetched: ${xlmBalance.balance}`);
-        } else {
-          setCurrentXlmBalance('0.0000000');
-        }
+        console.log("No balance result returned");
+        setCurrentXlmBalance('0.0000000');
       }
       
       // Platform balance is still from local storage - no change needed
       setUser(prev => prev ? { ...prev, platformBalanceXLM: prev.platformBalanceXLM } : null);
     } catch (error) {
-      console.error("Error fetching balances:", error);
-      // Fallback to previous balance or default
-      setCurrentXlmBalance(prev => prev || '0.0000000');
+      console.error("Error fetching balances from contract:", error);
+      
+      // Fall back to Horizon API as a backup method
+      console.log("Falling back to Horizon API...");
+      try {
+        const horizonUrl = `https://horizon-testnet.stellar.org/accounts/${user.smartWalletAddress}`;
+        const response = await fetch(horizonUrl);
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.log("Account not found on Stellar network via Horizon API.");
+            setCurrentXlmBalance('0.0000000');
+          } else {
+            throw new Error(`Horizon API error: ${response.status}`);
+          }
+        } else {
+          const accountData = await response.json();
+          const xlmBalance = accountData.balances.find(
+            (balance: any) => balance.asset_type === 'native'
+          );
+          
+          if (xlmBalance) {
+            setCurrentXlmBalance(xlmBalance.balance);
+            console.log(`XLM balance from Horizon: ${xlmBalance.balance}`);
+          } else {
+            setCurrentXlmBalance('0.0000000');
+          }
+        }
+      } catch (fallbackError) {
+        console.error("Error in fallback balance fetch:", fallbackError);
+        // Fallback to previous balance or default
+        setCurrentXlmBalance(prev => prev || '0.0000000');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -474,6 +531,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const depositToPlatform = async (amount: number) => {
     if (!user) throw new Error("User not logged in");
     if (!passkeyKitRef.current || !walletData) throw new Error("Wallet not initialized");
+    if (!nativeTokenRef.current) throw new Error("Native token client not initialized");
     
     setIsLoading(true);
     try {
@@ -481,45 +539,30 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       
       console.log(`Preparing to transfer ${amount} XLM to system account: ${SYSTEM_ACCOUNT_ADDRESS}`);
       
-      // Create a transaction to send XLM to the system account
-      // This is where we'd normally use the Stellar SDK to build and submit a transaction
+      // Create a transaction to send XLM to the system account using SAC
       try {
+        // Convert XLM amount to stroop (1 XLM = 10,000,000 stroop)
+        const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
+        console.log(`Building transfer transaction for ${amountInStroops} stroops...`);
+        
+        // Create a transfer transaction using the native token contract
+        const transferTransaction = await nativeTokenRef.current.transfer({
+          from: user.smartWalletAddress,
+          to: SYSTEM_ACCOUNT_ADDRESS,
+          amount: amountInStroops
+        });
+        
+        // Sign the transaction with the passkey
+        console.log("Signing transaction with passkey...");
+        await passkeyKit.sign(transferTransaction, { keyId: walletData.keyIdBase64 });
+        
         // For the hackathon, we'll simulate this part
-        console.log(`Building transfer transaction...`);
+        // In a real app, we would send the transaction to the network
+        console.log("Transaction would be sent to network in production version");
         
-        // In a real implementation, we would:
-        // 1. Import necessary Stellar SDK components
-        // 2. Build a payment transaction to system account
-        // 3. Sign it using PasskeyKit
-        // 4. Submit it to the network
-        
-        /* 
-        const StellarSdk = await import('@stellar/stellar-sdk');
-        const server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
-        
-        // Build the transaction
-        const sourceAccount = await server.loadAccount(user.smartWalletAddress);
-        const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
-          fee: StellarSdk.BASE_FEE,
-          networkPassphrase: StellarSdk.Networks.TESTNET
-        })
-          .addOperation(StellarSdk.Operation.payment({
-            destination: SYSTEM_ACCOUNT_ADDRESS,
-            asset: StellarSdk.Asset.native(),
-            amount: amount.toString()
-          }))
-          .setTimeout(180)
-          .build();
-        
-        // Get transaction XDR
-        const transactionXDR = transaction.toXDR();
-        
-        // Use PasskeyKit to sign the transaction
-        const signedTransaction = await passkeyKit.sign(transactionXDR);
-        
+        /*
         // Submit the transaction
-        const result = await server.submitTransaction(signedTransaction);
-        
+        const result = await transferTransaction.send();
         console.log('Transaction successful!', result);
         */
         
@@ -542,14 +585,44 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     } catch (error: any) { 
       console.error(error); 
       alert(`Deposit failed: ${error.message}`); 
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const withdrawFromPlatform = async (amount: number) => {
     if (!user) throw new Error("User not logged in");
+    if (!nativeTokenRef.current) throw new Error("Native token client not initialized");
+    
     setIsLoading(true);
     try {
+      // For the hackathon demo, simulate withdrawal from platform to user's wallet
+      console.log(`Simulating withdrawal of ${amount} XLM from platform to user's wallet: ${user.smartWalletAddress}`);
+      
+      // In a real implementation, we would:
+      // 1. Create a transfer transaction from the platform contract to the user's wallet
+      // 2. Sign it with the platform's admin key
+      // 3. Submit it to the network
+      
+      /*
+      // Convert XLM amount to stroop
+      const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
+      
+      // Create a transfer transaction using the native token contract
+      const transferTransaction = await nativeTokenRef.current.transfer({
+        from: SYSTEM_ACCOUNT_ADDRESS, // This would be the platform contract address
+        to: user.smartWalletAddress,
+        amount: amountInStroops
+      });
+      
+      // Would need admin signature to authorize this transfer
+      // await passkeyKit.sign(transferTransaction, { adminKey });
+      
+      // Submit the transaction
+      const result = await transferTransaction.send();
+      console.log('Withdrawal transaction successful!', result);
+      */
+      
       // In-memory mock - just update the local state
       const newPlatformBalance = Math.max(0, user.platformBalanceXLM - amount);
       const newXlmBalance = (parseFloat(currentXlmBalance) + amount).toFixed(7);
@@ -564,8 +637,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     } catch (error: any) { 
       console.error(error); 
       alert(`Withdrawal failed: ${error.message}`); 
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const subscribeToCreator = async (creatorId: string, price: number) => {
