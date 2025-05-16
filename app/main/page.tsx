@@ -57,24 +57,13 @@ const initialFeaturedCreator = {
 
 const CreatorHero = ({ creator, onSupport, onUnlock, isLoggedIn }: any) => {
   return (
-    <section className="relative">
-      {/* Banner Image */}
-      <div className="h-64 w-full relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10" />
-        <img 
-          src={creator.bannerImageUrl} 
-          alt="Creator Banner"
-          className="w-full h-full object-cover"
-        />
-      </div>
-      
-      {/* Profile Content */}
-      <div className="container mx-auto px-4 relative -mt-24 z-20">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex flex-col md:flex-row">
+    <section className="bg-white py-4 shadow-sm">
+      <div className="container mx-auto px-4">
+        <div className="rounded-lg p-4">
+          <div className="flex flex-col md:flex-row items-center md:items-start">
             {/* Profile Image */}
-            <div className="md:mr-8 mb-4 md:mb-0 flex-shrink-0">
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-white shadow-md mx-auto md:mx-0">
+            <div className="mb-4 md:mb-0 md:mr-6">
+              <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border-4 border-white shadow-lg">
                 <img 
                   src={creator.profileImageUrl} 
                   alt={creator.displayName} 
@@ -84,46 +73,53 @@ const CreatorHero = ({ creator, onSupport, onUnlock, isLoggedIn }: any) => {
             </div>
             
             {/* Creator Info */}
-            <div className="flex-grow">
-              <div className="text-center md:text-left">
-                <h1 className="text-2xl md:text-3xl font-bold text-gray-800">{creator.displayName}</h1>
-                <p className="text-gray-500">@{creator.username} • {creator.location}</p>
-                <p className="mt-2 text-gray-700 max-w-3xl">{creator.bio}</p>
-              </div>
+            <div className="flex-grow text-center md:text-left">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-0.5">{creator.displayName}</h1>
+              <p className="text-gray-500 mb-2">@{creator.username} • {creator.location}</p>
+              <p className="text-gray-700 max-w-3xl mb-3">{creator.bio}</p>
               
               {/* Support Goal */}
-              <div className="mt-4 bg-gray-50 p-4 rounded-lg">
+              <div className="max-w-md mb-4">
                 <div className="flex justify-between text-sm mb-1">
                   <span className="font-medium">Support Goal</span>
                   <span>
                     {creator.supportGoal.current} / {creator.supportGoal.target} {creator.supportGoal.currency}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
                   <div 
-                    className="bg-indigo-600 h-3 rounded-full" 
+                    className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" 
                     style={{ width: `${(creator.supportGoal.current / creator.supportGoal.target * 100)}%` }}
                   ></div>
                 </div>
               </div>
               
               {/* Action Buttons */}
-              <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
+              <div className="flex flex-wrap gap-2 justify-center md:justify-start">
                 <button 
                   onClick={() => onSupport()}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-full transition shadow-md"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-5 rounded-full transition shadow-md flex items-center"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                   Support Creator
                 </button>
                 <button 
                   onClick={() => onUnlock()}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-6 rounded-full transition shadow-md"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-5 rounded-full transition shadow-md flex items-center"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                  </svg>
                   Unlock Premium Content
                 </button>
                 {!isLoggedIn && (
-                  <div className="text-sm text-gray-500 mt-2 sm:mt-3 sm:ml-4 sm:text-left text-center">
-                    Sign in with Passkey to support this creator
+                  <div className="text-xs text-gray-500 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Sign in to support this creator
                   </div>
                 )}
               </div>
@@ -137,10 +133,12 @@ const CreatorHero = ({ creator, onSupport, onUnlock, isLoggedIn }: any) => {
 
 const ContentPreview = ({ premiumContent, onPurchase, hasAccess }: any) => {
   return (
-    <div className="bg-white rounded-lg shadow-lg overflow-hidden my-8">
-      <div className="p-6 border-b">
-        <h2 className="text-2xl font-bold text-gray-800">Premium Content</h2>
-        <p className="text-gray-600 mt-1">Support this creator by purchasing exclusive content</p>
+    <div className="bg-white rounded-lg shadow-lg overflow-hidden my-6">
+      <div className="p-4 border-b">
+        <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+          Premium Content
+          <span className="text-base font-normal text-gray-600 ml-3">Support this creator by purchasing exclusive content</span>
+        </h2>
       </div>
       <div className="md:flex">
         <div className="md:w-1/3 relative h-48 md:h-auto">
