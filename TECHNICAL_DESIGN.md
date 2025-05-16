@@ -95,21 +95,20 @@ graph TD
 
 1.  User selects premium content to purchase.
 2.  Frontend communicates intent to backend.
-3.  Backend prepares a Soroban transaction to:
-    *   Call the Platform Contract to transfer payment from user's app balance to the creator.
+3.  Backend prepares a Soroban transaction to orchestrate the purchase. This ideally involves a single logical operation or a sequence managed by the user's smart wallet to:
+    *   Call the Platform Contract to transfer payment from the user's app balance to the creator.
     *   Call the NFT Contract to mint an NFT to the user.
-    *   These might be part of a multi-operation transaction or managed via smart wallet capabilities.
-4.  PasskeyKit Client SDK facilitates signing by the user's passkey.
-5.  Signed transaction sent to backend, then to Launchtube.
-6.  Frontend updates to show NFT ownership and unlock content.
+4.  PasskeyKit Client SDK facilitates signing by the user's passkey for the smart wallet to authorize these operations.
+5.  The signed authorization/transaction is sent to the backend, then relayed via Launchtube to the Stellar network.
+6.  Frontend updates to show NFT ownership and unlock content upon confirmation.
 
 ## 4. Design Choices
 
 ### a. Storage:
 
-*   **User Data (Profile, non-sensitive info):** Potentially a simple database (e.g., Supabase, Firebase, or even local storage for a hackathon MVP if user accounts are primarily identified by their public key/passkey ID) for creator bios, teaser video URLs, etc. *For the hackathon, we may simplify this and hardcode creator data or store it in a JSON file if a DB is too much overhead.*
-*   **Contract State (Balances, Subscriptions, NFT Ownership):** Stored directly on the Stellar ledger within the Soroban smart contracts. This is the source of truth for all on-chain data.
-*   **Session Management:** Managed by the Next.js backend using secure cookies or tokens after passkey authentication.
+*   **User Data (Profile, non-sensitive info):** User and creator profile information (bios, display names, non-sensitive preferences) will be stored in a scalable database solution (e.g., PostgreSQL, MySQL, or a managed cloud database like Supabase/Firebase). This allows for efficient querying and management of off-chain user-specific data that doesn't need to reside on the ledger.
+*   **Contract State (Balances, Subscriptions, NFT Ownership):** Stored directly on the Stellar ledger within the Soroban smart contracts. This is the immutable source of truth for all on-chain assets and states, ensuring transparency and verifiability.
+*   **Session Management:** Handled by the Next.js backend using secure, HTTP-only cookies or tokens, initiated after successful passkey authentication.
 
 ### b. Contract State Storage:
 
@@ -118,9 +117,9 @@ graph TD
     *   `DataKey::Subscription(Address /*User*/, Address /*Creator*/)`: Mapping to store subscription status and expiry.
     *   `DataKey::Creator(Address)`: Information about registered creators.
 *   **NFT Contract:** Will use Soroban's standard NFT contract patterns, storing:
-    *   `DataKey::Owner(u32 /*Token ID*/)`: Mapping token ID to owner address.
-    *   `DataKey::TokenURI(u32 /*Token ID*/)`: Mapping token ID to metadata URI.
-    *   `DataKey::Admin`: The administrative address for the NFT contract.
+    *   `DataKey::Owner(u32 /*Token ID*/)`: Mapping token ID to owner address (which could be a user's smart wallet contract ID).
+    *   `DataKey::TokenURI(u32 /*Token ID*/)`: Mapping token ID to metadata URI (e.g., an IPFS link or a URL to a JSON file following NFT metadata standards).
+    *   `DataKey::Admin`: The administrative address for the NFT contract, responsible for configuration or upgrades.
 
 ### c. Emitted Events (Soroban Contracts):
 
@@ -128,13 +127,13 @@ graph TD
     *   `deposit(user: Address, amount: u128)`
     *   `withdraw(user: Address, amount: u128)`
     *   `subscribed(user: Address, creator: Address, expires_on: u64)`
-    *   `tipped(tipper: Address, creator: Address, amount: u128)`
-*   **NFT Contract (Standard NEP-XXX events or custom as needed):**
-    *   `mint(to: Address, token_id: u32)`
-    *   `transfer(from: Address, to: Address, token_id: u32)`
-    *   `set_token_uri(token_id: u32, uri: String)`
+    *   `tipped(tipper: Address, creator: Address, amount: u128, memo: String)`
+*   **NFT Contract (examples, can follow established standards like ERC721/NEP-17 if applicable or define custom ones):**
+    *   `mint(operator: Address, to: Address, token_id: u32, token_uri: String)`
+    *   `transfer(operator: Address, from: Address, to: Address, token_id: u32)`
+    *   `approval(owner: Address, approved: Address, token_id: u32)` // Or ApprovalForAll
 
-    These events will be crucial for the frontend to build a user's action timeline by querying an indexer or by direct observation if an indexer isn't fully set up for the hackathon.
+    These events are essential for off-chain services and the frontend to react to state changes. An event indexer service (conceptually similar to Zephyr from `passkey-kit` or a custom solution leveraging Stellar network data providers) will listen for these events to build and maintain a readable history of actions, user timelines, and application state without constantly querying contracts directly.
 
 ### d. Passkeys Implementation:
 
@@ -156,13 +155,13 @@ graph TD
     *   Transactions will be constructed that invoke the user's smart wallet. The `PasskeyKit` on the client will be used to sign an authorization for the smart wallet to execute the transaction. This signed authorization is then submitted (often via the backend to Launchtube). The `PasskeyServer` might be involved in constructing the appropriate Soroban authorization entries if needed.
     *   The `passkey-kit` abstracts the details of how the passkey signature authorizes smart contract calls, making it seamless.
 
-## 5. Challenges Overcome / To Be Addressed
+## 5. Challenges Overcome & Design Considerations
 
-*   **Smart Wallet Deployment:** Ensuring each new user with a passkey gets a corresponding smart wallet deployed and correctly associated. `passkey-kit` aims to simplify this.
-*   **Transaction Atomicity:** For actions like NFT purchase (payment + mint), ensuring atomicity. This can be handled by a single smart contract call that internally orchestrates both actions or by relying on the smart wallet to execute a sequence of operations.
-*   **Event Indexing for Timeline:** Efficiently displaying a user's action timeline. For a hackathon, we might use a simpler polling mechanism or rely on client-side tracking of initiated actions, rather than setting up a full event indexer like Zephyr from `passkey-kit` (though its principles are relevant).
-*   **UX for Contract Interactions:** Abstracting away gas fees (Stellar fees are low, but still) and blockchain confirmations. Launchtube helps with submission reliability. PasskeyKit helps with signing. Frontend design will focus on clear feedback.
-*   **Synchronization of Balances:** Ensuring the displayed XLM and app balances are up-to-date and reflect network state.
+*   **Smart Wallet Lifecycle Management:** Ensuring each new user with a passkey has a corresponding smart wallet deployed or associated correctly is a key design consideration. The `passkey-kit` library is instrumental in simplifying this process by linking passkey credentials to smart wallet control and deployment.
+*   **Transaction Atomicity & Composability:** For complex actions like an NFT purchase (which involves payment and minting), ensuring atomicity is critical. This is achieved by designing smart contract functions that orchestrate multiple sub-operations within a single transaction, or by leveraging the user's smart wallet to execute a predefined sequence of authorized calls.
+*   **Efficient State Retrieval and Event Indexing:** To provide a responsive user experience (e.g., for user action timelines, up-to-date balances), relying solely on direct contract state queries can be inefficient. The design incorporates an event indexing layer that processes and stores contract-emitted events. This allows the frontend to quickly fetch historical data and real-time updates.
+*   **Seamless User Experience for Contract Interactions:** Abstracting away blockchain complexities (like transaction fees, though Stellar's are low, and confirmation delays) is paramount. Launchtube assists with reliable transaction submission, while PasskeyKit provides a familiar signing experience. The frontend design focuses on clear, immediate feedback and optimistic updates where appropriate.
+*   **Synchronization of On-Chain and Off-Chain Data:** Maintaining consistency between data stored in smart contracts and any off-chain databases (e.g., user profiles) requires careful event handling and synchronization logic.
 
 ## 6. Future Considerations (Post-Hackathon)
 

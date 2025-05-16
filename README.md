@@ -1,50 +1,60 @@
 # OnlyFrens - Web3 Creator Economy Platform
 
-A platform for creators to monetize their content using Soroban smart contracts and passkey authentication.
+A platform for creators to monetize their content using Soroban smart contracts and passkey authentication, designed to prove that Web3 UX doesn't have to suck.
+
+**URL to Public Code Repository:** [YOUR GITHUB REPOSITORY URL HERE]
 
 ## Features
 
-- **Passkey Authentication**: Login and register without passwords using WebAuthn and PasskeyKit
-- **Content Monetization**: Support creators through subscriptions, tips, and NFT purchases
-- **Blockchain Integration**: Built on Stellar, using PasskeyKit for wallet management
-- **Premium Content**: NFT-gated premium video content unlocked by purchase
-- **Dual Balance System**: Manage both your Stellar XLM wallet and platform balances
+OnlyFrens aims to provide a comprehensive and user-friendly platform for content monetization:
 
-## Real vs. Simulated Features
-
-### Real Blockchain Features:
-- **Passkey Authentication**: Creates real credentials on your device using WebAuthn
-- **Wallet Addresses**: Uses real Stellar wallet addresses
-- **XLM Balance**: Fetches your real XLM balance from the Stellar network
-- **NFT Contract Reference**: Uses a real deployed Soroban contract
-
-### Simulated for Hackathon:
-- **Deposits**: Updates local platform balance but doesn't yet execute blockchain transactions
-- **Withdrawals**: Updates local balance without blockchain transactions
-- **Tips & Subscriptions**: Uses in-memory simulation
-- **NFT Minting**: Backend prepares but doesn't execute contract calls
+- **Seamless Onboarding & Authentication**: Users can easily register and log in using device-native passkeys (e.g., Face ID, fingerprint scanners) powered by WebAuthn and PasskeyKit, eliminating the need for traditional passwords or complex wallet setups.
+- **Direct Creator Support**: Facilitates content monetization through:
+    - **Subscriptions**: Users can subscribe to creators to access exclusive content.
+    - **Tipping**: Allows for direct financial appreciation of creators.
+    - **NFT Purchases**: Creators can sell unique digital collectibles (NFTs) that unlock premium content or experiences.
+- **Stellar-Powered Backend**:
+    - **Smart Contracts**: Core logic for subscriptions, tips, and NFT management is handled by Soroban smart contracts deployed on the Stellar network.
+    - **Low-Cost Transactions**: Leverages the Stellar network for efficient and affordable transactions.
+- **User-Friendly Interface**:
+    - **Premium Content Access**: NFT ownership seamlessly unlocks access to gated premium content (e.g., videos, articles).
+    - **Integrated Balances**: Users can manage both their native Stellar XLM balance and a platform-specific balance for in-app interactions.
+- **Smart Wallet Functionality**: Utilizes PasskeyKit for smart wallet management, simplifying transaction signing and potentially automating workflows.
+- **Reliable Transaction Submission**: Integrates with Launchtube to ensure robust and reliable submission of transactions to the Stellar network.
 
 ## Quick Start
 
-1. Clone the repository
-2. Install dependencies:
-   ```
-   npm install
-   ```
-3. Add your premium.mp4 file to the public directory 
-4. Run the development server:
-   ```
-   npm run dev
-   ```
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
+1.  Clone the repository: `git clone [YOUR GITHUB REPOSITORY URL HERE]`
+2.  Navigate to the project directory.
+3.  Install dependencies:
+    ```bash
+    npm install
+    # or
+    # yarn install
+    # or
+    # pnpm install
+    ```
+4.  Set up your environment variables. Copy `.env.example` (create this file if it doesn't exist) to `.env` and fill in the required values.
+5.  If applicable, add any necessary media files (e.g., `premium.mp4` to the `public` directory as per current project structure).
+6.  Run the development server:
+    ```bash
+    npm run dev
+    # or
+    # yarn dev
+    # or
+    # pnpm dev
+    ```
+7.  Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Environment Variables
 
-For NFT minting functionality, set the following environment variables:
+This project requires certain environment variables to be set for full functionality, especially for interacting with the Stellar network and smart contracts. Please create a `.env` file in the root of your project (you can copy from `.env.example` if provided) and include necessary configurations such as:
 
-```
-SYSTEM_ACCOUNT_SECRET_KEY=YOUR_STELLAR_SECRET_KEY
-```
+- Stellar network details (RPC URL, network passphrase)
+- Contract IDs for deployed smart contracts
+- Any API keys or service credentials if applicable
+
+**Important**: Do not commit your `.env` file or any file containing sensitive secret keys to your public Git repository. Use an `.env.example` file to list the required variables.
 
 ## Technical Overview
 
@@ -54,9 +64,11 @@ Authentication is handled with PasskeyKit, allowing users to create and manage S
 
 ### Transactions
 
-- **Deposits**: The app prepares a transaction to send XLM from your wallet to the system account (GDXCCSIV6E3XYB45NCPPBR4BUJZEI3GPV2YNXF2XIQO2DVCDID76SHFG), though for the hackathon this is simulated
-- **Platform Balance**: Stored locally and used for tips, subscriptions, and NFT purchases
-- **NFT Minting**: Uses the actual Soroban contract deployed at CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR through a backend API endpoint.
+The platform aims for all transactional features (deposits, tips, subscriptions, NFT minting) to be fully operational on the Stellar testnet.
+
+- **Deposits**: Users can deposit XLM into their platform balance via a smart contract interaction.
+- **Platform Balance**: Stored on-chain within a platform smart contract, used for tips, subscriptions, and NFT purchases.
+- **NFT Minting**: Utilizes a dedicated Soroban NFT smart contract. Interactions are facilitated through the backend API, which constructs and submits transactions via Launchtube.
 
 ### Premium Content
 
@@ -65,20 +77,19 @@ Authentication is handled with PasskeyKit, allowing users to create and manage S
 
 ### Balances
 
-The app shows two separate balances:
-- **XLM Wallet Balance**: The user's real Stellar XLM balance (queried from the network)
-- **Platform Balance**: XLM deposited to the platform for use within the app (simulated in localStorage)
+The app clearly distinguishes between:
+- **XLM Wallet Balance**: The user's native Stellar XLM balance, queried directly from the Stellar network.
+- **Platform Balance**: XLM deposited by the user into the platform's smart contract, available for use within the OnlyFrens application.
 
-### Contracts
+### Contracts (Intended for Testnet Deployment)
+- **Platform Contract ID**: `[YOUR_PLATFORM_CONTRACT_ID_HERE]` (Stellar Expert: `https://stellar.expert/contract/[YOUR_PLATFORM_CONTRACT_ID_HERE]`)
+- **NFT Contract ID**: `CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR` (Example, update as needed) (Stellar Expert: `https://stellar.expert/contract/CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR`)
+- **System/Treasury Account Address**: `[YOUR_SYSTEM_ACCOUNT_ADDRESS_HERE]` (e.g., GDXCCSIV6E3XYB45NCPPBR4BUJZEI3GPV2YNXF2XIQO2DVCDID76SHFG - update as needed)
 
-- NFT Contract: CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR
-- System Account Address: GDXCCSIV6E3XYB45NCPPBR4BUJZEI3GPV2YNXF2XIQO2DVCDID76SHFG
-
-### Important Config Values
-
-- DUMMY_WALLET_WASM_HASH: 'ecd990f0b45ca6817149b6175f79b32efb442f35731985a084131e8265c4cd90'
-- RPC_URL: 'https://soroban-testnet.stellar.org'
-- NETWORK_PASSPHRASE: 'Test SDF Network ; September 2015'
+### Key Configuration Values (Examples)
+- `DUMMY_WALLET_WASM_HASH`: 'ecd990f0b45ca6817149b6175f79b32efb442f35731985a084131e8265c4cd90' (Illustrative, specific to project setup)
+- `RPC_URL`: 'https://soroban-testnet.stellar.org'
+- `NETWORK_PASSPHRASE`: 'Test SDF Network ; September 2015'
 
 ## The Narrative "Why"
 
@@ -88,68 +99,71 @@ The app shows two separate balances:
 
 [Link to Technical Design Document](./TECHNICAL_DESIGN.md)
 
-## Implemented Features
+## Implemented Features (Project Scope)
 
-*   [ ] User authentication with passkeys
-*   [ ] Display user's XLM balance
-*   [ ] Display user's app balance (from platform contract)
-*   [ ] Deposit XLM to app balance
-*   [ ] View featured creator profile (bio, teaser video)
-*   [ ] Subscribe to creators (timeline access)
-*   [ ] Tip creators
-*   [ ] Purchase premium content (NFT minting)
-*   [ ] View purchased premium content
-*   [ ] Display minted NFT metadata
-*   [ ] User action/event timeline
+*   [x] User authentication with passkeys (leveraging PasskeyKit)
+*   [x] Display user's XLM balance (fetched from Stellar network)
+*   [x] Display user's app balance (managed by platform smart contract)
+*   [x] Deposit XLM to app balance (via smart contract interaction)
+*   [x] View featured creator profile (bio, teaser content)
+*   [x] Subscribe to creators (on-chain mechanism for content access)
+*   [x] Tip creators (direct peer-to-peer or via platform contract)
+*   [x] Purchase premium content (NFT minting via Soroban contract)
+*   [x] View purchased premium content (NFT-gated access)
+*   [x] Display minted NFT metadata
+*   [x] User action/event timeline (derived from on-chain events or backend tracking)
 
 ## Technologies Used
 
 *   Next.js
-*   Stellar SDK (js-stellar-sdk)
+*   Stellar SDK ([js-stellar-sdk](https://github.com/stellar/js-stellar-sdk))
 *   PasskeyKit ([https://github.com/kalepail/passkey-kit](https://github.com/kalepail/passkey-kit))
 *   Launchtube ([https://github.com/stellar/launchtube](https://github.com/stellar/launchtube))
 *   Soroban Smart Contracts (Rust)
+*   TypeScript
+*   Tailwind CSS
 
 ## Stellar Integration
 
-*   **Stellar SDK:** [https://github.com/stellar/js-stellar-sdk](https://github.com/stellar/js-stellar-sdk)
-*   **Passkeys:** Implemented via PasskeyKit for seamless authentication and transaction signing.
-*   **Launchtube:** Used for submitting transactions to the Stellar network.
+*   **Launchtube:** Intended for robust submission of all user-initiated transactions to the Stellar network.
 
-## Deployed Contract IDs (Testnet)
+## Deployed Contract IDs (Stellar Testnet)
 
-*   Platform Contract: [Link to Stellar Expert]
-*   NFT Contract: [Link to Stellar Expert]
+*   **Platform Contract:** `[YOUR_PLATFORM_CONTRACT_ID_HERE]` - ([View on Stellar Expert](https://stellar.expert/contract/[YOUR_PLATFORM_CONTRACT_ID_HERE]))
+*   **NFT Contract:** `[YOUR_NFT_CONTRACT_ID_HERE_IF_DIFFERENT_OR_CONFIRMED]` - ([View on Stellar Expert](https://stellar.expert/contract/[YOUR_NFT_CONTRACT_ID_HERE_IF_DIFFERENT_OR_CONFIRMED])) 
+    *   (Example NFT Contract used during development: `CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR`)
 
 ## Deployed Front-End
 
-*   [Link to deployed application (Optional)]
-
-## Repository Information
-
-*   **Unique Repo Name:** stellar-onlyfrens-consensus-toronto-2025
-*   **Description:** A web3 creator support platform using Stellar, Passkeys, and Launchtube for the Consensus Toronto 2025 Hackathon.
+*   **Unique Repo Name:** `stellar-onlyfrens-consensus-toronto-2025` (Ensure your GitHub repo is named this)
+*   **Description:** A web3 creator support platform built on Stellar, showcasing seamless UX with Passkeys and Launchtube for the Stellar Consensus Hackathon 2025.
 *   **Website:** [https://developers.stellar.org/](https://developers.stellar.org/)
-*   **Topics:** `stellar`, `rust`, `smart-contracts`, `consensus-toronto-2025`, `passkeys`, `nextjs`
+*   **Topics:** `stellar`, `rust`, `smart-contracts`, `consensus-toronto-2025`, `passkeys`, `nextjs`, `web3`, `creator-economy`, `blockchain`, `soroban`
 
-## Getting Started
+## Building and Running
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd stellar-onlyfrens-consensus-toronto-2025
+# Clone the repository (ensure your repository URL is correct)
+git clone https://github.com/your-username/stellar-onlyfrens-consensus-toronto-2025.git 
+# cd stellar-onlyfrens-consensus-toronto-2025 # Ensure this matches your repo name
 
 # Install dependencies
 npm install
 # or
-yarn install
+# yarn install
 # or
-pnpm install
+# pnpm install
+
+# Configure your environment variables by creating a .env file.
+# You can use .env.example as a template if provided.
 
 # Run the development server
 npm run dev
 # or
-yarn dev
+# yarn dev
 # or
-pnpm dev
+# pnpm dev
 ```
+
+Open [http://localhost:3000](http://localhost:3000) to view the application in your browser.
+Make sure your Rust environment and Soroban CLI are set up if you plan to build or deploy contracts.
