@@ -18,7 +18,7 @@ const RPC_URL = 'https://soroban-testnet.stellar.org';
 const NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
 
 // Real NFT contract ID - use for actual minting
-const NFT_CONTRACT_ID = 'CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR';
+const NFT_CONTRACT_ID = 'CCNMXO54G46RHX6XFJ3ZBVRMXZIPRU7JUNRIITQNTZJWIB55YV6J2W54';
 
 // Contract IDs for demo purposes
 const DUMMY_SUBSCRIPTION_CONTRACT_ID = 'CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV';
@@ -307,14 +307,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const response = await fetch(horizonUrl);
         
         if (response.ok) {
-          const accountData = await response.json();
-          const xlmBalance = accountData.balances.find(
+          const accountData = await response.json() as { balances: Array<{ asset_type: string; balance: string }> };
+          const xlmBalanceObj = accountData.balances.find(
             (balance: any) => balance.asset_type === 'native'
           );
           
-          if (xlmBalance) {
-            setCurrentXlmBalance(xlmBalance.balance);
-            console.log(`XLM balance from Horizon: ${xlmBalance.balance}`);
+          if (xlmBalanceObj) {
+            setCurrentXlmBalance(xlmBalanceObj.balance);
+            console.log(`XLM balance from Horizon: ${xlmBalanceObj.balance}`);
           } else {
             setCurrentXlmBalance('0.0000000');
           }
@@ -875,18 +875,57 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to mint NFT');
+        const errorData = await response.json() as { message?: string };
+        throw new Error(errorData.message || 'Failed to mint NFT (platform DB)');
       }
       
-      const result = await response.json();
+      const result = await response.json() as { success: boolean; message?: string; nft: NftData };
       
       if (!result.success) {
-        throw new Error(result.message || 'Failed to mint NFT');
+        throw new Error(result.message || 'Failed to mint NFT (platform DB reports failure)');
       }
       
       // Use the NFT data returned from the backend
       const newNft: NftData = result.nft;
+      
+      // ---- START NEW: Call backend to mint the actual NFT on-chain ----
+      try {
+        console.log(`Initiating on-chain minting for NFT ${newNft.id} to wallet ${user.smartWalletAddress}`);
+        const mintingResponse = await fetch('/api/nft/mint-for-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // Include session token if your backend requires authentication for this
+            // 'Authorization': `Bearer ${sessionToken}`,
+          },
+          body: JSON.stringify({
+            userWalletAddress: user.smartWalletAddress,
+            nftId: newNft.id, // Could be used for logging or linking on backend
+            name: newNft.name,
+            description: newNft.description,
+            imageUrl: newNft.imageUrl,
+            // Pass any other necessary details for minting
+          }),
+        });
+
+        if (!mintingResponse.ok) {
+          const mintErrorData = await mintingResponse.json() as { message?: string };
+          throw new Error(mintErrorData.message || 'On-chain NFT minting failed via backend');
+        }
+
+        const mintingResult = await mintingResponse.json() as { success: boolean; message?: string; [key: string]: any };
+        console.log("On-chain minting successful:", mintingResult);
+        // Potentially update newNft with contractAddress or tokenId if returned and needed
+        // For now, newNft already has what the UI expects from the platform DB
+
+      } catch (mintingError: any) {
+        console.error("Error during on-chain NFT minting:", mintingError);
+        // Decide how to handle this: alert user, rollback platform DB changes, etc.
+        // For now, just alert and the platform DB record remains.
+        alert(`NFT purchase recorded, but on-chain minting failed: ${mintingError.message}. Please contact support.`);
+        // Do not re-throw if we want the rest of the UI update to proceed
+      }
+      // ---- END NEW: Call backend to mint the actual NFT on-chain ----
       
       // Add new NFT and action to history
       const newAction: UserAction = {
