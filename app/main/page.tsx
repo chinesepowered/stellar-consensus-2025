@@ -320,6 +320,7 @@ export default function HomePage() {
   const [showPremiumContent, setShowPremiumContent] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [supportStatus, setSupportStatus] = useState<{ success: boolean; message: string; isLoading: boolean } | null>(null);
+  const [fakeAccess, setFakeAccess] = useState<Record<string, boolean>>({});
   
   const isSubscribedToCreator = user?.isLoggedIn && user.subscriptions.some(
     sub => sub.creatorId === creator.username && (!sub.expires || new Date(sub.expires) > new Date())
@@ -328,92 +329,94 @@ export default function HomePage() {
   const hasPremiumAccess = user?.isLoggedIn && user.ownedNfts.some(
     nft => nft.id === creator.premiumContent.id
   );
+  const effectiveHasPremiumAccess = hasPremiumAccess || !!fakeAccess[creator.premiumContent.id];
   
   const handlePurchaseContent = async () => {
+    const contentId = creator.premiumContent.id;
+    const currentEffectiveAccess = hasPremiumAccess || !!fakeAccess[contentId];
+
     if (!user?.isLoggedIn) {
       setShowAuthModal(true);
       return;
     }
-    
-    if (hasPremiumAccess) {
-      // Verify NFT ownership with backend before showing premium content
-      try {
-        const response = await fetch('/api/nft/verify', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: user.id,
-            walletAddress: user.smartWalletAddress,
-            nftId: creator.premiumContent.id,
-          }),
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to verify NFT ownership');
-        }
-        
-        const result: { success?: boolean; hasAccess?: boolean } = await response.json();
-        
-        if (!result.success || !result.hasAccess) {
+
+    if (currentEffectiveAccess) {
+      if (hasPremiumAccess) { // If access is potentially real (user has the NFT)
+        // Verify NFT ownership with backend before showing premium content
+        try {
+          const response = await fetch('/api/nft/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: user.id, // user is confirmed to be logged in here
+              walletAddress: user.smartWalletAddress,
+              nftId: contentId,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to verify NFT ownership');
+          }
+
+          const result: { success?: boolean; hasAccess?: boolean } = await response.json();
+
+          if (!result.success || !result.hasAccess) {
+            setSupportStatus({
+              success: false,
+              message: 'Access verification failed. Please try again.',
+              isLoading: false
+            });
+            return; // Do not show content if verification fails
+          }
+          
+          // Approved - show premium content
+          setShowPremiumContent(true);
+        } catch (error: any) {
+          console.error('Error verifying NFT access:', error);
           setSupportStatus({
             success: false,
-            message: 'Access verification failed. Please try again.',
+            message: `Verification failed: ${error.message}`,
             isLoading: false
           });
-          return;
         }
-        
-        // Approved - show premium content
-        setShowPremiumContent(true);
-      } catch (error: any) {
-        console.error('Error verifying NFT access:', error);
-        setSupportStatus({
-          success: false,
-          message: `Verification failed: ${error.message}`,
-          isLoading: false
-        });
+      } else { // Access is purely from fakeAccess (currentEffectiveAccess is true but hasPremiumAccess is false)
+        setShowPremiumContent(true); // Just show it, no verification needed for fake access
       }
       return;
     }
-    
-    // Prepare the purchase
-    const { id, name, description, imageUrl, premiumContentUrl, premiumContentType, price = 0, creatorId = '' } = creator.premiumContent;
-    
-    try {
-      setSupportStatus({ success: false, message: '', isLoading: true });
-      await purchaseNft({ 
-        id, 
-        name, 
-        description, 
-        imageUrl, 
-        premiumContentUrl, 
-        premiumContentType,
-        price, 
-        creatorId 
-      });
-      setSupportStatus({
-        success: true,
-        message: 'Successfully purchased premium content!',
-        isLoading: false
-      });
-      
-      // Update support goal
-      setCreator(prev => ({
-        ...prev,
-        supportGoal: {
-          ...prev.supportGoal,
-          current: prev.supportGoal.current + price
-        }
-      }));
-    } catch (err: any) {
-      setSupportStatus({
-        success: false,
-        message: `Purchase failed: ${err.message}`,
-        isLoading: false
-      });
-    }
+
+    // User is logged in, and currentEffectiveAccess is false. This is the "Unlock This Content" click.
+    // Perform the fake purchase.
+    const { price = 0 } = creator.premiumContent;
+
+    // 1. Update support goal
+    setCreator(prev => ({
+      ...prev,
+      supportGoal: {
+        ...prev.supportGoal,
+        current: prev.supportGoal.current + price,
+      },
+    }));
+
+    // 2. Grant fake access
+    setFakeAccess(prev => ({
+      ...prev,
+      [contentId]: true,
+    }));
+
+    // 3. Set status message (optional, for consistency with original purchase flow)
+    setSupportStatus({
+      success: true,
+      message: 'Content unlocked! (Simulated)',
+      isLoading: false,
+    });
+    // This status might not be directly visible unless a modal that uses it is also shown.
+    // The main feedback is the content modal appearing and button text changing.
+
+    // 4. Show the premium content modal directly after fake unlock.
+    setShowPremiumContent(true);
   };
   
   const handleSupportCreator = () => {
@@ -520,7 +523,7 @@ export default function HomePage() {
       <ContentPreview 
         premiumContent={creator.premiumContent}
         onPurchase={handlePurchaseContent}
-        hasAccess={hasPremiumAccess}
+        hasAccess={effectiveHasPremiumAccess}
       />
       
       <TimelinePosts 
@@ -644,7 +647,7 @@ export default function HomePage() {
       )}
       
       {/* Premium Content Modal */}
-      {showPremiumContent && hasPremiumAccess && (
+      {showPremiumContent && effectiveHasPremiumAccess && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl overflow-hidden max-w-4xl w-full">
             <div className="p-4 bg-indigo-50 border-b border-gray-200 flex justify-between items-center">

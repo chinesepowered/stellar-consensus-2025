@@ -4,6 +4,35 @@ A platform where creators meet cutting-edge Web3 technology, designed to prove t
 
 **🔗 Public Code Repository:** [https://github.com/chinesepowered/stellar-consensus-2025](https://github.com/chinesepowered/stellar-consensus-2025)
 
+## 🚀 Quick Look
+
+### Demo Video
+
+Watch a quick walkthrough of OnlyFrens in action:
+
+<video src="/demo.mp4" controls width="100%">
+  Your browser does not support the video tag.
+</video>
+
+### Screenshots
+
+Here are some glimpses of the OnlyFrens interface:
+
+![OnlyFrens Homepage](/screenshots/screen1.jpg)
+*Caption: OnlyFrens Homepage - Getting Started Guide and Creator Preview*
+
+![OnlyFrens Support Modal](/screenshots/screen2.jpg)
+*Caption: Support Modal - Multiple options to support a creator*
+
+![OnlyFrens Premium Content Locked](/screenshots/screen3.jpg)
+*Caption: Premium Content - Locked state, prompting user to unlock*
+
+![OnlyFrens Premium Content Unlocked](/screenshots/screen4.jpg)
+*Caption: Premium Content - Unlocked state, video accessible*
+
+![OnlyFrens Creator Timeline](/screenshots/screen5.jpg)
+*Caption: Creator Timeline - Posts and updates from a subscribed creator*
+
 ## 💡 Core UX Philosophy & Key Features
 
 Our mission with OnlyFrens is to deliver a Web3 application with the *seamlessness, intuition, and fluidity* of your favorite Web2 experiences. Users shouldn't need a blockchain PhD to support creators they love.
