@@ -4,6 +4,8 @@ A platform where creators meet cutting-edge Web3 technology, designed to prove t
 
 **🔗 Public Code Repository:** [https://github.com/chinesepowered/stellar-consensus-2025](https://github.com/chinesepowered/stellar-consensus-2025)
 
+**🔗 Canva:** [Canva Link](https://www.canva.com/design/DAGnlUetMhM/MTS5mYSQ1K1R5_Ol41S3bA/edit?utm_content=DAGnlUetMhM&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
+
 ## 🚀 Quick Look
 
 ### Demo Video
@@ -17,27 +19,27 @@ Watch a quick walkthrough of OnlyFrens in action:
 Here are some glimpses of the OnlyFrens interface:
 
 <p align="center">
-  <span style="display: inline-block; text-align: center; margin: 10px; width: 45%;">
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
     <img src="/public/screen1.jpg" alt="OnlyFrens Homepage" width="100%" /><br />
     <em>Homepage &amp; Guide</em>
   </span>
-  <span style="display: inline-block; text-align: center; margin: 10px; width: 45%;">
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
     <img src="/public/screen2.jpg" alt="OnlyFrens Support Modal" width="100%" /><br />
     <em>Support Modal</em>
   </span>
 </p>
 <p align="center">
-  <span style="display: inline-block; text-align: center; margin: 10px; width: 45%;">
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
     <img src="/public/screen3.jpg" alt="OnlyFrens Premium Content Locked" width="100%" /><br />
     <em>Premium Locked</em>
   </span>
-  <span style="display: inline-block; text-align: center; margin: 10px; width: 45%;">
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
     <img src="/public/screen4.jpg" alt="OnlyFrens Premium Content Unlocked" width="100%" /><br />
     <em>Premium Unlocked</em>
   </span>
 </p>
 <p align="center">
-  <span style="display: inline-block; text-align: center; margin: 10px; width: 45%;">
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
     <img src="/public/screen5.jpg" alt="OnlyFrens Creator Timeline" width="100%" /><br />
     <em>Creator Timeline</em>
   </span>
