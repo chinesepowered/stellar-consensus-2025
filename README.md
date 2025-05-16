@@ -17,24 +17,28 @@ Watch a quick walkthrough of OnlyFrens in action:
 Here are some glimpses of the OnlyFrens interface:
 
 <p align="center">
-  <span style="display: inline-block; text-align: center; margin: 10px;">
-    <img src="/public/screen1.jpg" alt="OnlyFrens Homepage" width="300" /><br />
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 45%;">
+    <img src="/public/screen1.jpg" alt="OnlyFrens Homepage" width="100%" /><br />
     <em>Homepage &amp; Guide</em>
   </span>
-  <span style="display: inline-block; text-align: center; margin: 10px;">
-    <img src="/public/screen2.jpg" alt="OnlyFrens Support Modal" width="300" /><br />
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 45%;">
+    <img src="/public/screen2.jpg" alt="OnlyFrens Support Modal" width="100%" /><br />
     <em>Support Modal</em>
   </span>
-  <span style="display: inline-block; text-align: center; margin: 10px;">
-    <img src="/public/screen3.jpg" alt="OnlyFrens Premium Content Locked" width="300" /><br />
+</p>
+<p align="center">
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 45%;">
+    <img src="/public/screen3.jpg" alt="OnlyFrens Premium Content Locked" width="100%" /><br />
     <em>Premium Locked</em>
   </span>
-  <span style="display: inline-block; text-align: center; margin: 10px;">
-    <img src="/public/screen4.jpg" alt="OnlyFrens Premium Content Unlocked" width="300" /><br />
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 45%;">
+    <img src="/public/screen4.jpg" alt="OnlyFrens Premium Content Unlocked" width="100%" /><br />
     <em>Premium Unlocked</em>
   </span>
-  <span style="display: inline-block; text-align: center; margin: 10px;">
-    <img src="/public/screen5.jpg" alt="OnlyFrens Creator Timeline" width="300" /><br />
+</p>
+<p align="center">
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 45%;">
+    <img src="/public/screen5.jpg" alt="OnlyFrens Creator Timeline" width="100%" /><br />
     <em>Creator Timeline</em>
   </span>
 </p>
