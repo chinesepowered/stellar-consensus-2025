@@ -5,6 +5,9 @@ import { User as ApiUser, NftData, UserAction } from '@/lib/types'; // Import st
 import { browserSupportsWebAuthn } from '@simplewebauthn/browser'; // Import the support check
 import type { PasskeyKit as PasskeyKitType } from 'passkey-kit'; // Import the actual type
 
+// System account that will receive deposits
+const SYSTEM_ACCOUNT_ADDRESS = 'GDXCCSIV6E3XYB45NCPPBR4BUJZEI3GPV2YNXF2XIQO2DVCDID76SHFG';
+
 // Configuration values previously in lib/data.ts
 const DUMMY_WALLET_WASM_HASH = 'ecd990f0b45ca6817149b6175f79b32efb442f35731985a084131e8265c4cd90';
 const FACTORY_CONTRACT_ID = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC';
@@ -153,11 +156,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           const userData = JSON.parse(storedUserData);
           setSessionToken(storedToken);
           setUser({ ...userData, isLoggedIn: true });
-          setCurrentXlmBalance('10000.0000000'); // Mock XLM balance for demo
           
           // Load wallet data if available
           if (storedWalletData) {
             setWalletData(JSON.parse(storedWalletData));
+            
+            // Fetch real wallet balance
+            fetchBalances();
           }
         } catch (error) {
           console.warn("Failed to load user/wallet data from localStorage:", error);
@@ -358,28 +363,117 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const fetchBalances = async () => {
-    // Mock implementation - just update the UI with what we have
-    if (user) {
-      setCurrentXlmBalance('10000.0000000');
+    // Only fetch if user is logged in and has a wallet address
+    if (!user || !user.smartWalletAddress) return;
+    
+    setIsLoading(true);
+    try {
+      // Fetch real wallet balance from Stellar horizon
+      const response = await fetch(`https://horizon-testnet.stellar.org/accounts/${user.smartWalletAddress}`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          // Account not found/not activated yet
+          console.log("Account not found. May need activation.");
+          setCurrentXlmBalance('0.0000000');
+        } else {
+          throw new Error(`Failed to fetch balance: ${response.statusText}`);
+        }
+      } else {
+        const accountData = await response.json();
+        
+        // Find XLM balance in the balances array
+        const xlmBalance = accountData.balances.find(
+          (balance: any) => balance.asset_type === 'native'
+        );
+        
+        if (xlmBalance) {
+          setCurrentXlmBalance(xlmBalance.balance);
+          console.log(`Real XLM balance fetched: ${xlmBalance.balance}`);
+        } else {
+          setCurrentXlmBalance('0.0000000');
+        }
+      }
+      
+      // Platform balance is still from local storage - no change needed
       setUser(prev => prev ? { ...prev, platformBalanceXLM: prev.platformBalanceXLM } : null);
+    } catch (error) {
+      console.error("Error fetching balances:", error);
+      // Fallback to previous balance or default
+      setCurrentXlmBalance(prev => prev || '0.0000000');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const depositToPlatform = async (amount: number) => {
     if (!user) throw new Error("User not logged in");
+    if (!passkeyKitRef.current || !walletData) throw new Error("Wallet not initialized");
+    
     setIsLoading(true);
     try {
-      // In-memory mock - just update the local state
-      const newPlatformBalance = user.platformBalanceXLM + amount;
-      const newXlmBalance = (parseFloat(currentXlmBalance) - amount).toFixed(7);
+      const passkeyKit = passkeyKitRef.current;
       
-      // Update user in state and localStorage
-      const updatedUser = { ...user, platformBalanceXLM: newPlatformBalance };
-      setUser(updatedUser);
-      setCurrentXlmBalance(newXlmBalance);
-      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
+      console.log(`Preparing to transfer ${amount} XLM to system account: ${SYSTEM_ACCOUNT_ADDRESS}`);
       
-      alert('Deposit Successful!');
+      // Create a transaction to send XLM to the system account
+      // This is where we'd normally use the Stellar SDK to build and submit a transaction
+      try {
+        // For the hackathon, we'll simulate this part
+        console.log(`Building transfer transaction...`);
+        
+        // In a real implementation, we would:
+        // 1. Import necessary Stellar SDK components
+        // 2. Build a payment transaction to system account
+        // 3. Sign it using PasskeyKit
+        // 4. Submit it to the network
+        
+        /* 
+        const StellarSdk = await import('@stellar/stellar-sdk');
+        const server = new StellarSdk.Server('https://horizon-testnet.stellar.org');
+        
+        // Build the transaction
+        const sourceAccount = await server.loadAccount(user.smartWalletAddress);
+        const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
+          fee: StellarSdk.BASE_FEE,
+          networkPassphrase: StellarSdk.Networks.TESTNET
+        })
+          .addOperation(StellarSdk.Operation.payment({
+            destination: SYSTEM_ACCOUNT_ADDRESS,
+            asset: StellarSdk.Asset.native(),
+            amount: amount.toString()
+          }))
+          .setTimeout(180)
+          .build();
+        
+        // Get transaction XDR
+        const transactionXDR = transaction.toXDR();
+        
+        // Use PasskeyKit to sign the transaction
+        const signedTransaction = await passkeyKit.sign(transactionXDR);
+        
+        // Submit the transaction
+        const result = await server.submitTransaction(signedTransaction);
+        
+        console.log('Transaction successful!', result);
+        */
+        
+        // If transaction was successful, update the local balances
+        // For the hackathon, we'll simulate this
+        const newPlatformBalance = user.platformBalanceXLM + amount;
+        const newXlmBalance = (parseFloat(currentXlmBalance) - amount).toFixed(7);
+        
+        // Update user in state and localStorage
+        const updatedUser = { ...user, platformBalanceXLM: newPlatformBalance };
+        setUser(updatedUser);
+        setCurrentXlmBalance(newXlmBalance);
+        localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
+        
+        alert('Deposit Successful!');
+      } catch (txError: any) {
+        console.error("Transaction error:", txError);
+        throw new Error(`Transaction failed: ${txError.message || 'Unknown error'}`);
+      }
     } catch (error: any) { 
       console.error(error); 
       alert(`Deposit failed: ${error.message}`); 

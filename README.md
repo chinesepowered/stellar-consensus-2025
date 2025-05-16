@@ -7,6 +7,22 @@ A platform for creators to monetize their content using Soroban smart contracts 
 - **Passkey Authentication**: Login and register without passwords using WebAuthn and PasskeyKit
 - **Content Monetization**: Support creators through subscriptions, tips, and NFT purchases
 - **Blockchain Integration**: Built on Stellar, using PasskeyKit for wallet management
+- **Premium Content**: NFT-gated premium video content unlocked by purchase
+- **Dual Balance System**: Manage both your Stellar XLM wallet and platform balances
+
+## Real vs. Simulated Features
+
+### Real Blockchain Features:
+- **Passkey Authentication**: Creates real credentials on your device using WebAuthn
+- **Wallet Addresses**: Uses real Stellar wallet addresses
+- **XLM Balance**: Fetches your real XLM balance from the Stellar network
+- **NFT Contract Reference**: Uses a real deployed Soroban contract
+
+### Simulated for Hackathon:
+- **Deposits**: Updates local platform balance but doesn't yet execute blockchain transactions
+- **Withdrawals**: Updates local balance without blockchain transactions
+- **Tips & Subscriptions**: Uses in-memory simulation
+- **NFT Minting**: Backend prepares but doesn't execute contract calls
 
 ## Quick Start
 
@@ -15,18 +31,19 @@ A platform for creators to monetize their content using Soroban smart contracts 
    ```
    npm install
    ```
-3. Run the development server:
+3. Add your premium.mp4 file to the public directory 
+4. Run the development server:
    ```
    npm run dev
    ```
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## Environment Variables
 
 For NFT minting functionality, set the following environment variables:
 
 ```
-NEXT_PUBLIC_SYSTEM_ACCOUNT_SECRET_KEY=YOUR_STELLAR_SECRET_KEY
+SYSTEM_ACCOUNT_SECRET_KEY=YOUR_STELLAR_SECRET_KEY
 ```
 
 ## Technical Overview
@@ -37,13 +54,25 @@ Authentication is handled with PasskeyKit, allowing users to create and manage S
 
 ### Transactions
 
-- **Regular Transactions**: For the hackathon demo, regular transactions (tips, subscriptions, deposits) are simulated in-memory and persisted to localStorage.
-- **NFT Minting**: NFT minting uses the actual Soroban contract deployed at CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR.
+- **Deposits**: The app prepares a transaction to send XLM from your wallet to the system account (GDXCCSIV6E3XYB45NCPPBR4BUJZEI3GPV2YNXF2XIQO2DVCDID76SHFG), though for the hackathon this is simulated
+- **Platform Balance**: Stored locally and used for tips, subscriptions, and NFT purchases
+- **NFT Minting**: Uses the actual Soroban contract deployed at CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR through a backend API endpoint.
+
+### Premium Content
+
+- The premium video content (`/premium.mp4`) is gated by NFT ownership and verified through a backend API endpoint.
+- Users can only access the content if they own the corresponding NFT.
+
+### Balances
+
+The app shows two separate balances:
+- **XLM Wallet Balance**: The user's real Stellar XLM balance (queried from the network)
+- **Platform Balance**: XLM deposited to the platform for use within the app (simulated in localStorage)
 
 ### Contracts
 
 - NFT Contract: CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR
-- Factory Contract: CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC
+- System Account Address: GDXCCSIV6E3XYB45NCPPBR4BUJZEI3GPV2YNXF2XIQO2DVCDID76SHFG
 
 ### Important Config Values
 

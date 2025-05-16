@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import PasskeyAuth from '@/components/auth/PasskeyAuth';
 
@@ -9,6 +9,17 @@ export default function WalletPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [amount, setAmount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
+  const [copySuccess, setCopySuccess] = useState(false);
+  const addressRef = useRef<HTMLInputElement>(null);
+
+  const copyToClipboard = () => {
+    if (addressRef.current) {
+      addressRef.current.select();
+      document.execCommand('copy');
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    }
+  };
 
   if (!user?.isLoggedIn) {
     return (
@@ -50,6 +61,14 @@ export default function WalletPage() {
       alert("Please enter a valid amount");
       return;
     }
+    
+    // Check if user has enough XLM
+    const availableXlm = parseFloat(currentXlmBalance);
+    if (isNaN(availableXlm) || availableXlm < amount) {
+      alert(`Insufficient XLM balance. You have ${currentXlmBalance} XLM available.`);
+      return;
+    }
+    
     try {
       await depositToPlatform(amount);
       setAmount(0);
@@ -79,13 +98,55 @@ export default function WalletPage() {
     <div className="max-w-4xl mx-auto py-8">
       <h1 className="text-3xl font-bold text-gray-800 mb-8">Your Wallet</h1>
       
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+        <div className="p-6 border-b">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">Your Wallet Address</h3>
+          <div className="flex items-center">
+            <input
+              ref={addressRef}
+              type="text"
+              readOnly
+              value={user.smartWalletAddress}
+              className="flex-1 p-3 bg-gray-50 border border-gray-300 rounded-l-md text-sm font-mono"
+            />
+            <button
+              onClick={copyToClipboard}
+              className="bg-indigo-600 text-white px-4 py-3 rounded-r-md hover:bg-indigo-700 transition"
+            >
+              {copySuccess ? (
+                <span className="flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Copied!
+                </span>
+              ) : (
+                <span className="flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                  </svg>
+                  Copy
+                </span>
+              )}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">Use this address to receive XLM testnet tokens for your demo</p>
+        </div>
+      </div>
+      
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         {/* Balances */}
         <div className="p-6 border-b">
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-lg">
               <h3 className="text-sm font-medium text-indigo-800 mb-1">XLM Wallet Balance</h3>
-              <div className="text-3xl font-bold text-indigo-700">{currentXlmBalance} XLM</div>
+              <div className="text-3xl font-bold text-indigo-700">
+                {isLoading ? (
+                  <span className="animate-pulse">Loading...</span>
+                ) : (
+                  `${parseFloat(currentXlmBalance) === 0 ? '0' : currentXlmBalance} XLM`
+                )}
+              </div>
               <p className="text-xs text-indigo-600 mt-1">Available for deposit</p>
             </div>
             
@@ -123,9 +184,14 @@ export default function WalletPage() {
                 Deposit XLM from your wallet to the platform to support creators and unlock premium content.
               </p>
               <div className="mb-4">
-                <label htmlFor="deposit-amount" className="block text-sm font-medium text-gray-700 mb-1">
-                  Amount (XLM)
-                </label>
+                <div className="flex justify-between mb-1">
+                  <label htmlFor="deposit-amount" className="block text-sm font-medium text-gray-700">
+                    Amount (XLM)
+                  </label>
+                  <span className="text-xs text-gray-500">
+                    Available: {isLoading ? 'Loading...' : `${currentXlmBalance} XLM`}
+                  </span>
+                </div>
                 <div className="relative rounded-md shadow-sm">
                   <input
                     type="number"
@@ -134,6 +200,7 @@ export default function WalletPage() {
                     placeholder="0.0000000"
                     value={amount || ''}
                     onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
+                    max={parseFloat(currentXlmBalance)}
                   />
                 </div>
               </div>
@@ -144,7 +211,8 @@ export default function WalletPage() {
                     <button
                       key={quickAmount}
                       onClick={() => setAmount(quickAmount)}
-                      className="px-3 py-1 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md"
+                      disabled={parseFloat(currentXlmBalance) < quickAmount}
+                      className="px-3 py-1 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {quickAmount} XLM
                     </button>
@@ -153,7 +221,7 @@ export default function WalletPage() {
                 
                 <button
                   onClick={handleDeposit}
-                  disabled={isLoading || amount <= 0}
+                  disabled={isLoading || amount <= 0 || parseFloat(currentXlmBalance) < amount}
                   className="bg-indigo-600 text-white px-6 py-2 rounded-md font-medium hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLoading ? 'Processing...' : 'Deposit'}

@@ -9,11 +9,31 @@ OnlyFrens is a web3 platform designed to support uplifting creators, allowing us
 1. **Passkey Authentication**: Users can create accounts and log in using their device's biometrics through WebAuthn, with wallet keys securely stored for persistent sessions
    
 2. **Creator Support**: Users can support creators through:
-   - Monthly subscriptions to access exclusive content
+   - Monthly subscriptions to access exclusive timeline updates
    - One-time tips of various amounts
-   - Purchasing NFTs that unlock premium content
+   - Purchasing NFTs that unlock premium video content
    
 3. **Web3 Integration**: Built on Stellar Soroban with PasskeyKit for wallet management
+
+4. **Dual Balance System**:
+   - Real Stellar XLM wallet balance (fetched from the network)
+   - Platform XLM balance (for in-app transactions)
+
+5. **NFT-Gated Premium Content**: Access to premium video content (`/premium.mp4`) is controlled through NFT ownership verification
+
+## Real vs. Simulated Features
+
+### Real Blockchain Features:
+- **Authentication**: PasskeyKit integration creates real WebAuthn credentials
+- **Wallet Addresses**: Real Stellar wallet addresses are used
+- **XLM Balance**: The app fetches real user balances from the Stellar network
+- **Smart Contract**: A real Soroban NFT contract is deployed and referenced
+
+### Simulated Features:
+- **Deposits**: The app prepares the transaction structure but doesn't execute it
+- **Platform Balance**: Stored locally in localStorage
+- **Tips & Subscriptions**: In-memory simulation with local balance updates
+- **NFT Minting**: Backend API endpoint simulates the contract call
 
 ## Technical Implementation
 
@@ -21,25 +41,30 @@ OnlyFrens is a web3 platform designed to support uplifting creators, allowing us
 - **Authentication**: PasskeyKit for Stellar wallet creation and management
 - **Data Storage**: Client-side storage for the hackathon demo
 - **Smart Contracts**: Soroban contracts for NFT minting and access control
+- **Backend API**: Minimal backend API endpoints to handle NFT minting and ownership verification
 
-## Hackathon Adaptations
+## System Design
 
-For the hackathon demo, we've implemented the following:
+1. **Authentication Flow**:
+   - User creates a passkey → PasskeyKit creates Stellar wallet credentials
+   - Wallet balance is fetched from Stellar network
+   - Session persistence allows users to stay logged in
 
-1. **Client-side Authentication**: All authentication happens on the client side using PasskeyKit, eliminating backend dependency
-2. **Wallet Persistence**: User wallet info is saved in localStorage, allowing users to stay logged in between sessions
-3. **Simplified Transactions**: Regular transactions like tips and subscriptions are mocked in-memory
-4. **Real NFT Integration**: NFT minting uses the real Soroban contract deployed at CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR
+2. **Transaction Flow**:
+   - Deposits: User's XLM would go to the system account (GDXCCSIV6E3XYB45NCPPBR4BUJZEI3GPV2YNXF2XIQO2DVCDID76SHFG)
+   - Platform balance is used for content purchases and creator support
+   - NFT purchases go through a backend endpoint that would interact with the contract
 
 ## Setup Instructions
 
 1. Clone the repository
 2. Run `npm install`
-3. Create a `.env.local` file with your Stellar testnet account:
+3. Add your premium.mp4 file to the public directory
+4. Create a `.env.local` file with your Stellar testnet account:
    ```
-   NEXT_PUBLIC_SYSTEM_ACCOUNT_SECRET_KEY=YOUR_SECRET_KEY
+   SYSTEM_ACCOUNT_SECRET_KEY=YOUR_SECRET_KEY
    ```
-4. Run `npm run dev`
+5. Run `npm run dev`
 
 ## Team
 
