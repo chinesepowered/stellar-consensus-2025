@@ -121,7 +121,7 @@ The app clearly distinguishes between:
 
 ## 📦 Repository Information
 
-*   **Project Name:** `stellar-onlyfrens-consensus-toronto-2025` (Matches GitHub repo name)
+*   **Project Name:** `stellar-consensus-2025`
 *   **Tagline:** A Web3 creator support platform on Stellar, proving great UX is possible with Passkeys & Launchtube.
 *   **Keywords/Topics:** `stellar`, `rust`, `smart-contracts`, `consensus-toronto-2025`, `passkeys`, `nextjs`, `web3`, `creator-economy`, `blockchain`, `soroban`, `fintech`, `ux`, `passkeykit`, `launchtube`
 *   **Stellar Dev Portal:** [https://developers.stellar.org/](https://developers.stellar.org/)
