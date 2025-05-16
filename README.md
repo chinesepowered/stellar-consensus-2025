@@ -10,23 +10,33 @@ A platform where creators meet cutting-edge Web3 technology, designed to prove t
 
 Watch a quick walkthrough of OnlyFrens in action:
 
-<video src="https://github.com/chinesepowered/stellar-consensus-2025/raw/refs/heads/main/public/demo.mp4" controls width="100%">
-  Your browser does not support the video tag.
-</video>
+[Watch Demo Video](https://github.com/chinesepowered/stellar-consensus-2025/raw/refs/heads/main/public/demo.mp4)
 
 ### Screenshots
 
 Here are some glimpses of the OnlyFrens interface:
 
 <p align="center">
-  <img src="/public/screen1.jpg" alt="OnlyFrens Homepage" width="170" />
-  <img src="/public/screen2.jpg" alt="OnlyFrens Support Modal" width="170" />
-  <img src="/public/screen3.jpg" alt="OnlyFrens Premium Content Locked" width="170" />
-  <img src="/public/screen4.jpg" alt="OnlyFrens Premium Content Unlocked" width="170" />
-  <img src="/public/screen5.jpg" alt="OnlyFrens Creator Timeline" width="170" />
-</p>
-<p align="center">
-  <em>Homepage &amp; Guide</em> | <em>Support Modal</em> | <em>Premium Locked</em> | <em>Premium Unlocked</em> | <em>Creator Timeline</em>
+  <span style="display: inline-block; text-align: center; margin: 10px;">
+    <img src="/public/screen1.jpg" alt="OnlyFrens Homepage" width="300" /><br />
+    <em>Homepage &amp; Guide</em>
+  </span>
+  <span style="display: inline-block; text-align: center; margin: 10px;">
+    <img src="/public/screen2.jpg" alt="OnlyFrens Support Modal" width="300" /><br />
+    <em>Support Modal</em>
+  </span>
+  <span style="display: inline-block; text-align: center; margin: 10px;">
+    <img src="/public/screen3.jpg" alt="OnlyFrens Premium Content Locked" width="300" /><br />
+    <em>Premium Locked</em>
+  </span>
+  <span style="display: inline-block; text-align: center; margin: 10px;">
+    <img src="/public/screen4.jpg" alt="OnlyFrens Premium Content Unlocked" width="300" /><br />
+    <em>Premium Unlocked</em>
+  </span>
+  <span style="display: inline-block; text-align: center; margin: 10px;">
+    <img src="/public/screen5.jpg" alt="OnlyFrens Creator Timeline" width="300" /><br />
+    <em>Creator Timeline</em>
+  </span>
 </p>
 
 ## 💡 Core UX Philosophy & Key Features
