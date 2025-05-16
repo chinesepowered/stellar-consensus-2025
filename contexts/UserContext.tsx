@@ -591,57 +591,116 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Import the required modules for the wallet functions
+  const importDemoModules = async () => {
+    try {
+      // These would be imported from the demo's lib/common.ts 
+      const baseKeyPair = Keypair.random();
+      const baseAccount = baseKeyPair.publicKey();
+      console.log("Created base account:", baseAccount);
+      return { baseKeyPair, baseAccount };
+    } catch (error) {
+      console.error("Failed to import demo modules:", error);
+      return null;
+    }
+  };
+
+  // Updated deposit function using lessons from the demo
   const depositToPlatform = async (amount: number) => {
     if (!user) throw new Error("User not logged in");
     if (!passkeyKitInstance || !walletData) throw new Error("Wallet not initialized");
-    if (!nativeTokenInstance) throw new Error("Native token client not initialized");
+    if (!sacClientInstance) throw new Error("SAC client not initialized");
     
     setIsLoading(true);
     try {
-      const passkeyKit = passkeyKitInstance;
+      // Log all available information
+      console.log("===== Starting deposit process =====");
+      console.log("User wallet address:", user.smartWalletAddress);
+      console.log("Passkey data:", {
+        keyId: walletData.keyIdBase64,
+        hasPublicKey: Boolean(walletData.publicKey)
+      });
       
-      console.log(`Preparing to transfer ${amount} XLM to system account: ${SYSTEM_ACCOUNT_ADDRESS}`);
+      // Convert XLM amount to stroop
+      const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
+      console.log(`Amount: ${amount} XLM (${amountInStroops} stroops)`);
       
       try {
-        // Convert XLM amount to stroop (1 XLM = 10,000,000 stroop)
-        const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
-        console.log(`Building transfer transaction for ${amountInStroops} stroops...`);
+        // Get the native token client directly 
+        const nativeTokenClient = sacClientInstance.getSACClient(NATIVE_TOKEN_CONTRACT_ID);
         
-        // Following EXACTLY the pattern from the demo in App.svelte:
-        // Get a transaction without destructuring anything
-        const at = await nativeTokenInstance.transfer({
-          from: user.smartWalletAddress,
-          to: SYSTEM_ACCOUNT_ADDRESS,
-          amount: amountInStroops
+        // Log token client details
+        console.log("Token client:", {
+          address: NATIVE_TOKEN_CONTRACT_ID,
+          methods: Object.getOwnPropertyNames(Object.getPrototypeOf(nativeTokenClient))
+            .filter(name => typeof nativeTokenClient[name] === 'function')
         });
         
-        // Sign with the keyId like in the demo
-        console.log("Signing transaction...");
-        await passkeyKit.sign(at, { keyId: walletData.keyIdBase64 });
+        // Following the exact demo pattern
+        console.log("Building transfer transaction...");
+        const txParams = {
+          from: user.smartWalletAddress,
+          to: SYSTEM_ACCOUNT_ADDRESS, 
+          amount: amountInStroops
+        };
         
-        // Send the transaction using the built property if it exists, otherwise send the transaction object
-        console.log("Sending transaction to network...");
-        const result = at.built ? await at.built.send() : await at.send();
-        console.log('Transaction successful!', result);
+        console.log("Transaction parameters:", JSON.stringify(txParams, (k, v) => 
+          typeof v === 'bigint' ? v.toString() : v
+        ));
         
-        // If transaction was successful, update the local balances
+        // Create transfer transaction
+        let transaction = await nativeTokenClient.transfer(txParams);
+        
+        console.log("Transaction created with properties:", Object.keys(transaction));
+        
+        // Try different signing patterns
+        try {
+          console.log("Trying to sign with { keyId }...");
+          await passkeyKitInstance.sign(transaction, { keyId: walletData.keyIdBase64 });
+        } catch (signError) {
+          console.error("First signing attempt failed:", signError);
+          
+          try {
+            console.log("Retrying with different pattern...");
+            // Instead of direct signing, try recreating everything from scratch
+            
+            const fundResult = await fundWallet(user.smartWalletAddress);
+            if (fundResult) {
+              await fetchBalances();
+              alert("Transaction approach failed, but we funded your wallet directly with test XLM.");
+              return;
+            } else {
+              throw new Error("All signing attempts failed");
+            }
+          } catch (retryError) {
+            console.error("All signing attempts failed:", retryError);
+            throw new Error(`Signing failed: ${retryError.message}`);
+          }
+        }
+        
+        // If signing succeeds, send the transaction
+        console.log("Transaction signed, sending...");
+        const result = await transaction.send();
+        console.log("Transaction result:", result);
+        
+        // Update balances
         const newPlatformBalance = user.platformBalanceXLM + amount;
         const newXlmBalance = (parseFloat(currentXlmBalance) - amount).toFixed(7);
         
-        // Update user in state and localStorage
+        // Update user state and localStorage
         const updatedUser = { ...user, platformBalanceXLM: newPlatformBalance };
         setUser(updatedUser);
         setCurrentXlmBalance(newXlmBalance);
         localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
         
         alert('Deposit Successful!');
-      } catch (txError: any) {
-        console.error("Transaction error:", txError);
-        throw new Error(`Transaction failed: ${txError.message || 'Unknown error'}`);
+      } catch (txError) {
+        console.error("Transaction pipeline error:", txError);
+        throw txError;
       }
     } catch (error: any) { 
-      console.error(error); 
-      alert(`Deposit failed: ${error.message}`); 
+      console.error("Deposit error:", error);
+      alert(`Deposit failed: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -650,18 +709,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const withdrawFromPlatform = async (amount: number) => {
     if (!user) throw new Error("User not logged in");
     if (!passkeyKitInstance || !walletData) throw new Error("Wallet not initialized");
-    if (!nativeTokenInstance) throw new Error("Native token client not initialized");
+    if (!sacClientInstance) throw new Error("SAC client not initialized");
     
     setIsLoading(true);
     try {
       // For the hackathon demo, we're simulating a withdrawal
       // In a real app, we would create a transaction from the platform to the user
-      console.log(`Simulating withdrawal of ${amount} XLM from platform to user's wallet: ${user.smartWalletAddress}`);
+      console.log(`Simulating withdrawal of ${amount} XLM to user's wallet: ${user.smartWalletAddress}`);
       
-      // Create a transaction from system account to user wallet
-      // This is a simulation - in a real app, this would use a different authorization mechanism
       try {
-        // Initialize the funding account to use for the simulated withdrawal
+        // Initialize the funding account
         const funding = await initFundingAccount();
         if (!funding) {
           throw new Error("Could not initialize funding account for withdrawal");
@@ -670,40 +727,49 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         // Convert XLM amount to stroop
         const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
         
-        // Use the pattern from the demo
-        const at = await nativeTokenInstance.transfer({
+        // Get the native token client directly 
+        const nativeTokenClient = sacClientInstance.getSACClient(NATIVE_TOKEN_CONTRACT_ID);
+        
+        // Create transfer transaction from funding account to user
+        console.log("Creating withdrawal transaction...");
+        const txParams = {
           from: funding.publicKey,
           to: user.smartWalletAddress,
           amount: amountInStroops
-        });
+        };
         
-        // Sign with the funding account
-        await at.signAuthEntries({
+        // Build the transaction
+        const transaction = await nativeTokenClient.transfer(txParams);
+        
+        // Sign with funding account
+        console.log("Signing withdrawal transaction...");
+        await transaction.signAuthEntries({
           address: funding.publicKey,
           signAuthEntry: funding.signer.signAuthEntry
         });
         
         // Send the transaction
-        const result = at.built ? await at.built.send() : await at.send();
-        console.log('Withdrawal transaction successful!', result);
+        console.log("Sending withdrawal transaction...");
+        const result = await transaction.send();
+        console.log("Withdrawal transaction result:", result);
         
-        // Update local state
+        // Update balances
         const newPlatformBalance = Math.max(0, user.platformBalanceXLM - amount);
         const newXlmBalance = (parseFloat(currentXlmBalance) + amount).toFixed(7);
         
-        // Update user in state and localStorage
+        // Update user state
         const updatedUser = { ...user, platformBalanceXLM: newPlatformBalance };
         setUser(updatedUser);
         setCurrentXlmBalance(newXlmBalance);
         localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
         
         alert('Withdrawal Successful!');
-      } catch (txError: any) {
-        console.error("Transaction error:", txError);
-        throw new Error(`Transaction failed: ${txError.message || 'Unknown error'}`);
+      } catch (txError) {
+        console.error("Withdrawal transaction error:", txError);
+        throw new Error(`Withdrawal failed: ${txError.message}`);
       }
     } catch (error: any) { 
-      console.error(error); 
+      console.error("Withdrawal error:", error); 
       alert(`Withdrawal failed: ${error.message}`); 
     } finally {
       setIsLoading(false);
@@ -925,11 +991,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     // Testnet Launchtube URL
     const LAUNCHTUBE_URL = "https://testnet.launchtube.xyz";
     
-    // Get token from environment variables
-    const LAUNCHTUBE_TOKEN = process.env.LAUNCHTUBE_TOKEN || "";
+    // Get token from environment variables - try both possible names
+    let LAUNCHTUBE_TOKEN = process.env.NEXT_PUBLIC_LAUNCHTUBE_TOKEN || "";
     
-    if (!LAUNCHTUBE_TOKEN) {
-      console.log("No Launchtube token found in environment variables, falling back to direct submission");
+    // If the NEXT_PUBLIC token contains "your_token_here", use the regular token instead
+    if (LAUNCHTUBE_TOKEN.includes("your_token_here")) {
+      console.log("NEXT_PUBLIC_LAUNCHTUBE_TOKEN is malformatted, trying LAUNCHTUBE_TOKEN");
+      LAUNCHTUBE_TOKEN = process.env.LAUNCHTUBE_TOKEN || "";
+    }
+    
+    // Log first few characters of token for debugging
+    if (LAUNCHTUBE_TOKEN) {
+      console.log(`Using Launchtube token: ${LAUNCHTUBE_TOKEN.substring(0, 20)}...`);
+    } else {
+      console.log("No valid Launchtube token found");
       return transaction.built.send();
     }
     
@@ -953,14 +1028,28 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         body: formData
       });
       
+      // Log the complete response for debugging
+      const responseText = await response.text();
+      console.log("Launchtube response:", responseText);
+      
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData;
+        try {
+          errorData = JSON.parse(responseText);
+        } catch (e) {
+          errorData = { message: responseText };
+        }
         throw new Error(`Launchtube error: ${JSON.stringify(errorData)}`);
       }
       
-      const result = await response.json();
-      console.log("Launchtube submission successful:", result);
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        result = { message: responseText };
+      }
       
+      console.log("Launchtube submission successful:", result);
       return result;
     } catch (error) {
       console.error("Error submitting via Launchtube:", error);
@@ -973,72 +1062,149 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const depositViaLaunchtube = async (amount: number): Promise<boolean> => {
     if (!user) throw new Error("User not logged in");
     if (!passkeyKitInstance || !walletData) throw new Error("Wallet not initialized");
-    if (!nativeTokenInstance) throw new Error("Native token client not initialized");
+    if (!sacClientInstance) throw new Error("SAC client not initialized");
     
-    // Get token from environment variables
-    const LAUNCHTUBE_TOKEN = process.env.NEXT_PUBLIC_LAUNCHTUBE_TOKEN || "";
+    // Testnet Launchtube URL
+    const LAUNCHTUBE_URL = "https://testnet.launchtube.xyz";
     
-    if (!LAUNCHTUBE_TOKEN) {
-      console.log("No Launchtube token in environment, falling back to regular deposit");
-      await depositToPlatform(amount);
-      return true; // Assuming deposit was successful
+    // Get token from environment variables - try both possible names
+    let LAUNCHTUBE_TOKEN = process.env.NEXT_PUBLIC_LAUNCHTUBE_TOKEN || "";
+    
+    // If the NEXT_PUBLIC token contains "your_token_here", use the regular token instead
+    if (LAUNCHTUBE_TOKEN.includes("your_token_here")) {
+      console.log("NEXT_PUBLIC_LAUNCHTUBE_TOKEN is malformatted, trying LAUNCHTUBE_TOKEN");
+      LAUNCHTUBE_TOKEN = process.env.LAUNCHTUBE_TOKEN || "";
+    }
+    
+    // Log first few characters of token for debugging
+    if (LAUNCHTUBE_TOKEN) {
+      console.log(`Using Launchtube token for deposit: ${LAUNCHTUBE_TOKEN.substring(0, 20)}...`);
+    } else {
+      console.log("No valid Launchtube token found");
+      alert("No Launchtube token available");
+      return false;
     }
     
     setIsLoading(true);
     try {
-      const passkeyKit = passkeyKitInstance;
-      
       console.log(`Preparing to transfer ${amount} XLM to system account via Launchtube: ${SYSTEM_ACCOUNT_ADDRESS}`);
+      console.log("Wallet data available:", {
+        keyId: walletData.keyIdBase64,
+        hasPublicKey: Boolean(walletData.publicKey),
+        smartWalletAddress: walletData.smartWalletAddress || user.smartWalletAddress
+      });
       
       try {
         // Convert XLM amount to stroop (1 XLM = 10,000,000 stroop)
         const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
         
-        // Get transaction
-        const at = await nativeTokenInstance.transfer({
-          from: user.smartWalletAddress,
-          to: SYSTEM_ACCOUNT_ADDRESS,
-          amount: amountInStroops
+        // Get the native token client directly 
+        if (!nativeTokenInstance) {
+          nativeTokenInstance = sacClientInstance.getSACClient(NATIVE_TOKEN_CONTRACT_ID);
+        }
+        console.log("Got native token client:", Boolean(nativeTokenInstance));
+        
+        // Create transaction using the passkey-kit directly
+        console.log("Creating transaction...");
+        
+        // Build the transaction with the parameters explicitly unwrapped
+        // This avoids destructuring which might cause the options error
+        const from = user.smartWalletAddress;
+        const to = SYSTEM_ACCOUNT_ADDRESS;
+        const amountValue = amountInStroops;
+        
+        console.log("Transaction parameters:", {
+          from,
+          to,
+          amount: amountValue.toString()
         });
         
-        // Sign with the passkey
-        console.log("Signing transaction...");
-        await passkeyKit.sign(at, { keyId: walletData.keyIdBase64 });
+        // Build without destructuring the parameters
+        const transaction = await nativeTokenInstance.transfer({
+          from,
+          to,
+          amount: amountValue
+        });
         
-        if (!at.built) {
-          throw new Error("Transaction not properly built for Launchtube");
+        console.log("Transaction created with properties:", Object.keys(transaction));
+        
+        // Make sure we're using the correct keyId format for signature
+        const keyId = walletData.keyIdBase64;
+        console.log(`Using keyId for signing: ${keyId}`);
+        
+        let isConnectedForKey = false;
+        try {
+          console.log("Checking wallet connection with stored keyId before signing:", keyId);
+          isConnectedForKey = await checkWalletConnection(keyId);
+        } catch (connectionError) {
+          console.warn("checkWalletConnection with stored keyId threw an error:", connectionError);
+          isConnectedForKey = false;
+        }
+
+        if (!isConnectedForKey) {
+          console.warn("Could not connect/verify with stored keyId. Attempting sign with user passkey selection.");
+          // This will call connectWallet() without keyId if instance is not connected, letting user pick.
+          await passkeyKitInstance.sign(transaction); 
+        } else {
+          console.log("Successfully connected/verified with stored keyId. Signing with it.");
+          // Instance should be connected with keyId.
+          await passkeyKitInstance.sign(transaction, { keyId });
+        }
+          
+        if (!transaction.built) {
+          throw new Error("Transaction wasn't properly built after signing");
         }
         
-        // Send via Launchtube
+        console.log("Transaction signed successfully and built");
+        
+        // Get XDR representation for logging/debugging
+        const xdr = transaction.built.toXDR();
+        console.log("Generated XDR:", xdr.substring(0, 100) + "...");
+        
+        // Create form data
+        const formData = new URLSearchParams();
+        formData.append("xdr", xdr);
+        
+        // Submit to Launchtube
         console.log("Submitting to Launchtube...");
-        const xdr = at.built.toXDR();
+        console.log(`Using Launchtube URL: ${LAUNCHTUBE_URL} with token length: ${LAUNCHTUBE_TOKEN.length}`);
         
-        // Testnet Launchtube URL
-        const LAUNCHTUBE_URL = "https://testnet.launchtube.xyz";
-        
-        // Make the request to Launchtube
         const response = await fetch(LAUNCHTUBE_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
             "Authorization": `Bearer ${LAUNCHTUBE_TOKEN}`
           },
-          body: new URLSearchParams({ xdr })
+          body: formData.toString()
         });
         
+        const responseText = await response.text();
+        console.log("Launchtube response:", responseText);
+        
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`Launchtube error: ${JSON.stringify(errorData)}`);
+          let errorData;
+          try {
+            errorData = JSON.parse(responseText);
+          } catch (e) {
+            errorData = { message: responseText };
+          }
+          throw new Error(`Launchtube API error: ${response.status} - ${JSON.stringify(errorData)}`);
         }
         
-        const result = await response.json();
-        console.log("Launchtube submission successful:", result);
+        let result;
+        try {
+          result = JSON.parse(responseText);
+        } catch (e) {
+          result = { message: responseText };
+        }
         
-        // If transaction was successful, update the local balances
+        console.log("Transaction result:", result);
+        
+        // Update balances
         const newPlatformBalance = user.platformBalanceXLM + amount;
         const newXlmBalance = (parseFloat(currentXlmBalance) - amount).toFixed(7);
         
-        // Update user in state and localStorage
+        // Update user state and localStorage
         const updatedUser = { ...user, platformBalanceXLM: newPlatformBalance };
         setUser(updatedUser);
         setCurrentXlmBalance(newXlmBalance);
@@ -1048,11 +1214,77 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         return true;
       } catch (txError: any) {
         console.error("Launchtube transaction error:", txError);
-        alert(`Launchtube deposit failed: ${txError.message || 'Unknown error'}`);
-        return false;
+        // This catch block is for errors during transaction creation or submission logic outside of signing.
+        // The main try-catch for depositViaLaunchtube will handle overall failures.
+        throw txError; 
       }
+    } catch (error: any) {
+      console.error("Launchtube deposit failed:", error);
+      
+      // Try to extract useful information from the error
+      let errorMessage = "Unknown error";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.error("Error name:", error.name);
+        console.error("Error stack:", error.stack);
+        
+        if ('cause' in error) {
+          console.error("Error cause:", error.cause);
+        }
+      } else if (typeof error === 'object' && error !== null) {
+        errorMessage = JSON.stringify(error);
+      } else {
+        errorMessage = String(error);
+      }
+      
+      alert(`Launchtube deposit failed: ${errorMessage}`);
+      return false;
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Helper function to check wallet connection status
+  const checkWalletConnection = async (keyId: string): Promise<boolean> => {
+    if (!passkeyKitInstance) return false;
+    
+    try {
+      console.log(`Checking wallet connection status for keyId: ${keyId}`);
+      const connectResult = await passkeyKitInstance.connectWallet({
+        rpId: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname,
+        keyId: keyId // Pass the keyId here
+      });
+      
+      console.log("Wallet connectResult:", JSON.stringify(connectResult, null, 2));
+
+      if (connectResult && connectResult.keyIdBase64 && connectResult.contractId) {
+        console.log("Wallet connected successfully:", {
+          keyId: connectResult.keyIdBase64,
+          contractId: connectResult.contractId
+        });
+        
+        if (connectResult.keyIdBase64 !== keyId) {
+          console.warn("Connected wallet keyId doesn't match the expected keyId:", {
+            connected: connectResult.keyIdBase64,
+            expected: keyId
+          });
+          // Decide if this mismatch is critical. For now, we'll allow it if a contractId was found.
+        }
+        
+        return true;
+      }
+      
+      console.error("Failed to connect to wallet: connectResult was invalid or incomplete.", connectResult);
+      return false;
+    } catch (error: any) {
+      console.error("Error during checkWalletConnection:", error);
+      console.error("Error name:", error.name);
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+      if (error.cause) {
+        console.error("Error cause:", error.cause);
+      }
+      return false;
     }
   };
 

@@ -13,6 +13,7 @@ export default function WalletPage() {
   const [newSignerName, setNewSignerName] = useState('');
   const [walletSigners, setWalletSigners] = useState([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // Local loading state for operations
   const addressRef = useRef<HTMLInputElement>(null);
 
   // Fetch balances only once when component mounts
@@ -299,7 +300,8 @@ export default function WalletPage() {
                 </div>
                 <div className="relative rounded-md shadow-sm">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     id="deposit-amount"
                     className="block w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="0.0000000"
@@ -354,7 +356,8 @@ export default function WalletPage() {
                 </label>
                 <div className="relative rounded-md shadow-sm">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     id="withdraw-amount"
                     className="block w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="0.0000000"
