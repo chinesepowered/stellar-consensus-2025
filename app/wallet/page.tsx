@@ -15,13 +15,15 @@ export default function WalletPage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const addressRef = useRef<HTMLInputElement>(null);
 
-  // Fetch balances when component mounts
+  // Fetch balances only once when component mounts
   useEffect(() => {
     if (user?.isLoggedIn && user.smartWalletAddress) {
-      console.log("Fetching balances on wallet page mount");
-      fetchBalances();
+      console.log("Wallet page mounted, fetching balance");
+      fetchBalances().catch(err => {
+        console.error("Error fetching initial balance:", err);
+      });
     }
-  }, [user?.isLoggedIn, user?.smartWalletAddress, fetchBalances]);
+  }, []); // Empty dependency array to run only once on mount
 
   const copyToClipboard = () => {
     if (addressRef.current) {
@@ -32,14 +34,20 @@ export default function WalletPage() {
     }
   };
 
-  const handleRefreshBalance = () => {
-    fetchBalances();
+  const handleRefreshBalance = async () => {
+    try {
+      await fetchBalances();
+    } catch (error) {
+      console.error("Error refreshing balance:", error);
+      alert("Could not refresh balance. Please try again later.");
+    }
   };
 
   // Advanced wallet functions
   const fundWallet = async () => {
-    if (!window.passkeyKitWallet) {
-      alert("Passkey wallet not available. This feature requires direct access to the PasskeyKit instance.");
+    // Check for wallet availability through context instead of window global
+    if (!user?.smartWalletAddress) {
+      alert("Wallet not available. Please ensure you're logged in with a valid passkey wallet.");
       return;
     }
     

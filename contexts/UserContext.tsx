@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useRef, useCallback } from 'react';
 import { User as ApiUser, NftData, UserAction } from '@/lib/types'; // Import standardized types
 import { browserSupportsWebAuthn } from '@simplewebauthn/browser'; // Import the support check
 import { PasskeyKit as PasskeyKitType, SACClient } from 'passkey-kit'; // Import the actual type
@@ -29,6 +29,55 @@ const NATIVE_TOKEN_CONTRACT_ID = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQ
 const SESSION_TOKEN_LOCAL_STORAGE_KEY = 'onlyfrens_session_token';
 const LOCAL_STORAGE_USER_KEY = 'onlyfrens_user_data';
 const LOCAL_STORAGE_WALLET_KEY = 'onlyfrens_wallet_data';
+
+// Create singleton instances to avoid recreating them during renders
+let passkeyKitInstance: PasskeyKitType | null = null;
+let sacClientInstance: SACClient | null = null;
+let nativeTokenInstance: any = null;
+
+// Helper function to initialize PasskeyKit (will be called once)
+async function initializePasskeyKit() {
+  if (typeof window === "undefined" || !browserSupportsWebAuthn()) {
+    return null;
+  }
+  
+  try {
+    const { startRegistration, startAuthentication } = await import('@simplewebauthn/browser');
+    const { PasskeyKit, SACClient } = await import('passkey-kit');
+    
+    if (!PasskeyKit) {
+      console.error("PasskeyKit module was imported but PasskeyKit class is not available");
+      return null;
+    }
+    
+    console.log("Initializing PasskeyKit with config");
+    
+    // Create the PasskeyKit instance
+    const instance = new PasskeyKit({
+      rpcUrl: RPC_URL,
+      networkPassphrase: NETWORK_PASSPHRASE,
+      walletWasmHash: DUMMY_WALLET_WASM_HASH,
+      timeoutInSeconds: 60, // Generous timeout for demo purposes
+      WebAuthn: { startRegistration, startAuthentication } // Use imported functions
+    });
+    
+    // Initialize SAC client
+    sacClientInstance = new SACClient({
+      rpcUrl: RPC_URL,
+      networkPassphrase: NETWORK_PASSPHRASE,
+    });
+    
+    // Get native token client
+    nativeTokenInstance = sacClientInstance.getSACClient(NATIVE_TOKEN_CONTRACT_ID);
+    
+    console.log("PasskeyKit initialized successfully!");
+    
+    return instance;
+  } catch (error) {
+    console.error("Failed to initialize PasskeyKit:", error);
+    return null;
+  }
+}
 
 // Extended UserState for the context, including login status and full NftData objects
 interface UserState extends ApiUser {
@@ -90,7 +139,7 @@ const resetAllUserData = () => {
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserState | null>(null);
-  const [currentXlmBalance, setCurrentXlmBalance] = useState<string>('10000.0000000');
+  const [currentXlmBalance, setCurrentXlmBalance] = useState<string>('0.0000000');
   const [isLoading, setIsLoading] = useState(false); // For general per-action loading
   const [isLoadingUser, setIsLoadingUser] = useState(true); // For initial session check
   const [sessionToken, setSessionToken] = useState<string | null>(null);
@@ -98,77 +147,43 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [isPasskeyKitInitialized, setIsPasskeyKitInitialized] = useState(false);
   const [walletData, setWalletData] = useState<WalletData | null>(null);
   
-  const passkeyKitRef = useRef<PasskeyKitType | null>(null); // Properly typed PasskeyKit instance
-  const sacClientRef = useRef<SACClient | null>(null);
-  const nativeTokenRef = useRef<any | null>(null);
-
+  // Initialize once on component mount
   useEffect(() => {
-    const initializePasskeyKitAndCheckSupport = async () => {
+    const checkSupportAndInitialize = async () => {
       if (typeof window !== "undefined") {
-        // First, check for WebAuthn support using @simplewebauthn/browser
+        // Check for WebAuthn support
         const supported = browserSupportsWebAuthn();
         setIsPasskeySupported(supported);
         
         if (supported) {
           try {
-            // Also import SimpleWebAuthn browser functions for PasskeyKit
-            const { startRegistration, startAuthentication } = await import('@simplewebauthn/browser');
-            
-            // Dynamically import PasskeyKit only if WebAuthn is supported
-            const { PasskeyKit, SACClient } = await import('passkey-kit');
-            
-            if (!PasskeyKit) {
-              console.error("PasskeyKit module was imported but PasskeyKit class is not available");
-              return;
+            // Only initialize if not already done
+            if (!passkeyKitInstance) {
+              passkeyKitInstance = await initializePasskeyKit();
             }
             
-            // Use configuration values
-            console.log("Initializing PasskeyKit with config:", {
-              rpcUrl: RPC_URL,
-              networkPassphrase: NETWORK_PASSPHRASE,
-              walletWasmHash: DUMMY_WALLET_WASM_HASH,
-              WebAuthn: { startRegistration, startAuthentication }
-            });
-            
-            passkeyKitRef.current = new PasskeyKit({
-              rpcUrl: RPC_URL,
-              networkPassphrase: NETWORK_PASSPHRASE,
-              walletWasmHash: DUMMY_WALLET_WASM_HASH,
-              timeoutInSeconds: 60, // Generous timeout for demo purposes
-              WebAuthn: { startRegistration, startAuthentication } // Use imported functions
-            });
-            
-            // Initialize SAC client for native balance checking
-            sacClientRef.current = new SACClient({
-              rpcUrl: RPC_URL,
-              networkPassphrase: NETWORK_PASSPHRASE,
-            });
-            
-            // Get native token client for XLM operations
-            nativeTokenRef.current = sacClientRef.current.getSACClient(NATIVE_TOKEN_CONTRACT_ID);
-            
-            // Verify the instance is valid
-            if (!passkeyKitRef.current) {
-              console.error("PasskeyKit failed to initialize");
+            if (passkeyKitInstance) {
+              setIsPasskeyKitInitialized(true);
+              console.log("PasskeyKit successfully initialized with WebAuthn support.");
+            } else {
               setIsPasskeyKitInitialized(false);
-              return;
             }
-            
-            setIsPasskeyKitInitialized(true);
-            console.log("PasskeyKit successfully initialized with WebAuthn support.");
           } catch (error) {
-            console.error("Failed to load or initialize PasskeyKit:", error);
-            setIsPasskeyKitInitialized(false); // Ensure it's false on error
+            console.error("Failed to initialize PasskeyKit:", error);
+            setIsPasskeyKitInitialized(false);
           }
         } else {
           console.warn("WebAuthn is not supported by this browser.");
-          setIsPasskeyKitInitialized(false); // Cannot initialize PasskeyKit if WebAuthn not supported
+          setIsPasskeyKitInitialized(false);
         }
       }
     };
 
-    initializePasskeyKitAndCheckSupport();
+    checkSupportAndInitialize();
+  }, []);
 
+  // Load session data separately
+  useEffect(() => {
     const loadSession = async () => {
       const storedToken = localStorage.getItem(SESSION_TOKEN_LOCAL_STORAGE_KEY);
       const storedUserData = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
@@ -183,9 +198,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           // Load wallet data if available
           if (storedWalletData) {
             setWalletData(JSON.parse(storedWalletData));
-            
-            // Fetch real wallet balance
-            fetchBalances();
           }
         } catch (error) {
           console.warn("Failed to load user/wallet data from localStorage:", error);
@@ -202,6 +214,85 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     
     loadSession();
   }, []);
+
+  // Simplified fetch balances using the demo app pattern
+  const fetchBalances = useCallback(async () => {
+    if (!user?.smartWalletAddress || !isPasskeyKitInitialized) {
+      console.log("Cannot fetch balances: user not logged in, no wallet address, or PasskeyKit not initialized");
+      return;
+    }
+    
+    console.log(`Fetching balance for wallet address: ${user.smartWalletAddress}`);
+    setIsLoading(true);
+    
+    try {
+      // Similar approach to the demo app
+      if (!nativeTokenInstance) {
+        if (!sacClientInstance) {
+          console.error("SAC client not initialized");
+          throw new Error("Wallet services not fully initialized");
+        }
+        nativeTokenInstance = sacClientInstance.getSACClient(NATIVE_TOKEN_CONTRACT_ID);
+      }
+      
+      // Get balance like the demo app
+      const { result } = await nativeTokenInstance.balance({ 
+        id: user.smartWalletAddress 
+      });
+      
+      if (result !== undefined) {
+        // Convert from stroop (10^-7) to XLM (match the demo app approach)
+        const balanceInXLM = (Number(result) / 10_000_000).toFixed(7);
+        console.log(`Raw balance result: ${result}, converted to: ${balanceInXLM} XLM`);
+        setCurrentXlmBalance(balanceInXLM);
+      } else {
+        console.log("No balance result returned");
+        setCurrentXlmBalance('0.0000000');
+      }
+    } catch (error) {
+      console.error("Error fetching balance:", error);
+      
+      // Fall back to Horizon API
+      try {
+        const horizonUrl = `https://horizon-testnet.stellar.org/accounts/${user.smartWalletAddress}`;
+        const response = await fetch(horizonUrl);
+        
+        if (response.ok) {
+          const accountData = await response.json();
+          const xlmBalance = accountData.balances.find(
+            (balance: any) => balance.asset_type === 'native'
+          );
+          
+          if (xlmBalance) {
+            setCurrentXlmBalance(xlmBalance.balance);
+            console.log(`XLM balance from Horizon: ${xlmBalance.balance}`);
+          } else {
+            setCurrentXlmBalance('0.0000000');
+          }
+        } else {
+          setCurrentXlmBalance('0.0000000');
+        }
+      } catch (fallbackError) {
+        console.error("Error in fallback balance fetch:", fallbackError);
+        setCurrentXlmBalance('0.0000000');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.smartWalletAddress, isPasskeyKitInitialized]);
+
+  // Effect to fetch balance when user and PasskeyKit are ready
+  useEffect(() => {
+    const shouldFetchBalance = user?.smartWalletAddress && isPasskeyKitInitialized && !isLoadingUser;
+    
+    if (shouldFetchBalance) {
+      console.log("User and PasskeyKit ready, fetching initial balance");
+      // Use setTimeout to avoid immediate execution in the same render cycle
+      setTimeout(() => {
+        fetchBalances();
+      }, 500);
+    }
+  }, [user?.smartWalletAddress, isPasskeyKitInitialized, isLoadingUser]);
 
   const handleAuthSuccess = (userData: ApiUser, token: string, walletInfo?: WalletData) => {
     const userState: UserState = { 
@@ -232,7 +323,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const registerWithPasskey = async (username: string) => {
-    if (!isPasskeyKitInitialized || !passkeyKitRef.current) {
+    if (!isPasskeyKitInitialized || !passkeyKitInstance) {
       alert("PasskeyKit is still initializing or not available. Please try again shortly.");
       return;
     }
@@ -244,7 +335,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     try {
       // Using direct PasskeyKit createWallet method for registration
       // This will create both a passkey and wallet in one step
-      const passkeyKit = passkeyKitRef.current;
+      const passkeyKit = passkeyKitInstance;
       
       console.log("Creating wallet directly with PasskeyKit.createWallet...");
       const walletResult = await passkeyKit.createWallet(
@@ -296,12 +387,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const loginWithPasskey = async () => {
-    if (!isPasskeyKitInitialized || !passkeyKitRef.current) {
+    if (!isPasskeyKitInitialized || !passkeyKitInstance) {
       alert("PasskeyKit is still initializing or not available. Please try again shortly.");
       return;
     }
     
-    const passkeyKit = passkeyKitRef.current;
+    const passkeyKit = passkeyKitInstance;
     setIsLoading(true);
     
     try {
@@ -447,95 +538,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const fetchBalances = async () => {
-    // Only fetch if user is logged in and has a wallet address
-    if (!user || !user.smartWalletAddress) {
-      console.log("Cannot fetch balances: user not logged in or no wallet address");
-      return;
-    }
-    
-    console.log(`Fetching balance for wallet address: ${user.smartWalletAddress}`);
-    setIsLoading(true);
-    
-    try {
-      if (!nativeTokenRef.current) {
-        console.error("Native token client not initialized");
-        throw new Error("Wallet services not fully initialized");
-      }
-      
-      // Use the SACClient to get the native balance directly from the contract
-      console.log("Fetching balance using PasskeyKit SACClient...");
-      
-      const { result } = await nativeTokenRef.current.balance({ 
-        id: user.smartWalletAddress 
-      });
-      
-      if (result) {
-        // Convert from stroop (10^-7) to XLM
-        const balanceInXLM = (Number(result) / 10_000_000).toFixed(7);
-        console.log(`Raw balance result: ${result}, converted to: ${balanceInXLM} XLM`);
-        
-        setCurrentXlmBalance(balanceInXLM);
-        
-        // If balance is 0, let user know account may need activation
-        if (Number(result) === 0) {
-          console.log("Account has 0 balance. It may need activation with testnet XLM.");
-          alert("Your wallet address is valid but has 0 XLM. You need to fund it with testnet XLM to activate it.");
-        }
-      } else {
-        console.log("No balance result returned");
-        setCurrentXlmBalance('0.0000000');
-      }
-      
-      // Platform balance is still from local storage - no change needed
-      setUser(prev => prev ? { ...prev, platformBalanceXLM: prev.platformBalanceXLM } : null);
-    } catch (error) {
-      console.error("Error fetching balances from contract:", error);
-      
-      // Fall back to Horizon API as a backup method
-      console.log("Falling back to Horizon API...");
-      try {
-        const horizonUrl = `https://horizon-testnet.stellar.org/accounts/${user.smartWalletAddress}`;
-        const response = await fetch(horizonUrl);
-        
-        if (!response.ok) {
-          if (response.status === 404) {
-            console.log("Account not found on Stellar network via Horizon API.");
-            setCurrentXlmBalance('0.0000000');
-          } else {
-            throw new Error(`Horizon API error: ${response.status}`);
-          }
-        } else {
-          const accountData = await response.json();
-          const xlmBalance = accountData.balances.find(
-            (balance: any) => balance.asset_type === 'native'
-          );
-          
-          if (xlmBalance) {
-            setCurrentXlmBalance(xlmBalance.balance);
-            console.log(`XLM balance from Horizon: ${xlmBalance.balance}`);
-          } else {
-            setCurrentXlmBalance('0.0000000');
-          }
-        }
-      } catch (fallbackError) {
-        console.error("Error in fallback balance fetch:", fallbackError);
-        // Fallback to previous balance or default
-        setCurrentXlmBalance(prev => prev || '0.0000000');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const depositToPlatform = async (amount: number) => {
     if (!user) throw new Error("User not logged in");
-    if (!passkeyKitRef.current || !walletData) throw new Error("Wallet not initialized");
-    if (!nativeTokenRef.current) throw new Error("Native token client not initialized");
+    if (!passkeyKitInstance || !walletData) throw new Error("Wallet not initialized");
+    if (!nativeTokenInstance) throw new Error("Native token client not initialized");
     
     setIsLoading(true);
     try {
-      const passkeyKit = passkeyKitRef.current;
+      const passkeyKit = passkeyKitInstance;
       
       console.log(`Preparing to transfer ${amount} XLM to system account: ${SYSTEM_ACCOUNT_ADDRESS}`);
       
@@ -546,7 +556,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         console.log(`Building transfer transaction for ${amountInStroops} stroops...`);
         
         // Create a transfer transaction using the native token contract
-        const transferTransaction = await nativeTokenRef.current.transfer({
+        const transferTransaction = await nativeTokenInstance.transfer({
           from: user.smartWalletAddress,
           to: SYSTEM_ACCOUNT_ADDRESS,
           amount: amountInStroops
@@ -592,7 +602,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const withdrawFromPlatform = async (amount: number) => {
     if (!user) throw new Error("User not logged in");
-    if (!nativeTokenRef.current) throw new Error("Native token client not initialized");
+    if (!nativeTokenInstance) throw new Error("Native token client not initialized");
     
     setIsLoading(true);
     try {
@@ -609,7 +619,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
       
       // Create a transfer transaction using the native token contract
-      const transferTransaction = await nativeTokenRef.current.transfer({
+      const transferTransaction = await nativeTokenInstance.transfer({
         from: SYSTEM_ACCOUNT_ADDRESS, // This would be the platform contract address
         to: user.smartWalletAddress,
         amount: amountInStroops
