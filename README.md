@@ -1,61 +1,64 @@
-# OnlyFrens - Web3 Creator Economy Platform
+# ✨ OnlyFrens - Revolutionizing Creator Support with Stellar ✨
 
-A platform for creators to monetize their content using Soroban smart contracts and passkey authentication, designed to prove that Web3 UX doesn't have to suck.
+A platform where creators meet cutting-edge Web3 technology, designed to prove that **Web3 UX doesn't have to suck!**
 
-## UX Features
+**🔗 Public Code Repository:** [https://github.com/chinesepowered/stellar-consensus-2025](https://github.com/chinesepowered/stellar-consensus-2025)
 
-Users use passkey to authenticate, which creates a Stellar wallet for them. They can then fund that wallet traditionally through anchors, credit cards, or through crypto (this part isn't implemented yet since uh no money and on testnet).
+## 💡 Core UX Philosophy & Key Features
 
-Similar to current Web2 video streaming sites, their actions are now super fast since done off-chain.
+Our mission with OnlyFrens is to deliver a Web3 application with the *seamlessness, intuition, and fluidity* of your favorite Web2 experiences. Users shouldn't need a blockchain PhD to support creators they love.
 
-### Onchain:
--premium content are gated by NFT
--payment rails (for deposit and withdraw) are done
+*   **🔑 Effortless Onboarding:** Users authenticate using device-native **passkeys** (e.g., Face ID, fingerprint). This action transparently creates a Stellar smart wallet for them in seconds!
+*   **💰 Simplified Funding (Vision):** While direct funding via traditional anchors (credit cards, bank transfers) or crypto exchanges is the ultimate goal, our hackathon version focuses on streamlined testnet interactions to showcase the core experience.
+*   **🏗️ Hybrid Architecture for Optimal Performance:** We harness the power of both on-chain and off-chain systems:
 
-### Offchain:
--content serving (backend with CDN)
--internal transfers (eg: when tipping a creator, it just moves balance on platform); there's a Soroban contract for managing this for the hackaton and decentralization but at scale we could just use a normal database
+    *   **⛓️ On-Chain (Stellar Network):**
+        *   💎 **Premium Content Access:** Gated by unique NFTs, providing verifiable, tradable ownership.
+        *   💸 **Robust Payment Rails:** Deposits and withdrawals utilize Stellar's fast and low-cost infrastructure.
+        *   🤝 **Creator Support & Transparency (Future Ready):** While some internal transfers are off-chain for MVP speed, our design includes on-chain settlement options. The platform contract (`CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV`) pioneers this for shared logic.
 
-The key is to use blockchain where it matters (anti-censorship, no chargebacks, easier payment rails) and use traditional tech where it's not needed (serving content, moving balances around accounts when users tip creators, subscribe to content, etc). While wallet balance is shown in the hackatohn to demosntrate passkey-kit, in reality users won't even know they have a wallet.
+    *   **⚡ Off-Chain (Traditional Backend):**
+        *   🎬 **Swift Content Delivery:** Lightning-fast video/content serving via a standard backend (CDN-ready).
+        *   💨 **Real-time Interactions:** Instant internal balance updates for tips or micro-subscriptions ensure a smooth UX, with on-chain settlement for withdrawals.
 
-The NFT gating for premium content is to reward users with on-chain proof of their help towards their favorite creators. Who knows, maybe when their creator succeeds they may want to airdrop a little something to the people who helped them along the way :)
+*   **🎯 User-Centric by Design:**
+    *   Users enjoy a fast, responsive interface. *No confusing blockchain jargon!* Most actions feel just like any other modern web app.
+    *   NFTs act as **digital badges of honor**, proving support and unlocking potential future perks like exclusive airdrops.
+    *   The outcome? A UX that delights users, backed by Stellar's powerful payment rails and the unique value of NFTs.
 
-The end result is UX that's so good users don't even know it's on the blockchain, but with the benefits of Stellar payment rails and NFT (and possible future airdrops).
+## 🚀 Platform Features Breakdown
 
-**URL to Public Code Repository:** https://github.com/chinesepowered/stellar-consensus-2025
+OnlyFrens empowers creators and fans with a rich, user-friendly toolkit:
 
-## Features
+- **🔑 Seamless Onboarding & Authentication**: Users register and log in effortlessly with device-native **passkeys** (Face ID, fingerprint, etc.) via WebAuthn and PasskeyKit. No more forgotten passwords! This _automatically provisions a Stellar smart wallet_ for the user.
+- **🎁 Direct Creator Support**: Multiple ways to show love and get exclusive content:
+    - **🎫 Subscriptions**: Access exclusive content through a hybrid on-chain/off-chain model for flexibility and speed.
+    - **💖 Tipping**: Instantly send appreciation to creators (off-chain ledger for UX, with on-chain settlement options).
+    - **🖼️ NFT Purchases**: Creators can sell unique digital collectibles (NFTs) minted on the Stellar network, unlocking premium experiences.
+- **⚙️ Stellar-Powered Backend & Smart Contracts**:
+    - **Soroban Core Logic**: Key functions like NFT minting (`CCNMXO54G46RHX6XFJ3ZBVRMXZIPRU7JUNRIITQNTZJWIB55YV6J2W54`) and platform fund management aspects (`CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV`) are powered by robust Soroban smart contracts.
+    - **🌍 Anchor Integration (Vision):** Designed to tap into Stellar's rich ecosystem of anchors for easy fiat-to-crypto onboarding and global creator payouts (e.g., via MoneyGram).
+- **🖥️ User-Friendly Interface**:
+    - **🔒 NFT-Gated Premium Content**: Access exclusive content, seamlessly verified against _on-chain NFT ownership_.
+    - **📊 Dual Balance Display**: Users clearly see their native Stellar XLM balance (in their smart wallet) and their internal platform balance for quick in-app actions.
+- **🛡️ Smart Wallet Functionality via PasskeyKit**: Abstracting blockchain complexities, simplifying interactions and transaction signing for a smooth user journey.
+- ** Тран Reliable Transaction Submission via Launchtube**: Ensures on-chain transactions are dependably submitted to the Stellar network, handling potential network issues gracefully.
 
-OnlyFrens aims to provide a comprehensive and user-friendly platform for content monetization:
+## 🛠️ Environment Variables Setup
 
-- **Seamless Onboarding & Authentication**: Users can easily register and log in using device-native passkeys (e.g., Face ID, fingerprint scanners) powered by WebAuthn and PasskeyKit, eliminating the need for traditional passwords or complex wallet setups.
-- **Direct Creator Support**: Facilitates content monetization through:
-    - **Subscriptions**: Users can subscribe to creators to access exclusive content.
-    - **Tipping**: Allows for direct financial appreciation of creators.
-    - **NFT Purchases**: Creators can sell unique digital collectibles (NFTs) that unlock premium content or experiences.
-- **Stellar-Powered Backend**:
-    - **Smart Contracts**: Core logic for subscriptions, tips, and NFT management is handled by Soroban smart contracts deployed on the Stellar network.
-    - **Anchors for ramping**: Leverages the Stellar network of anchors to allow easier onboarding (so more users) and offboarding (so creators in many countries can get paid easily such as offramping to moneygram).
-- **User-Friendly Interface**:
-    - **Premium Content Access**: NFT ownership seamlessly unlocks access to gated premium content (e.g., videos, articles).
-    - **Integrated Balances**: Users can manage both their native Stellar XLM balance and a platform-specific balance for in-app interactions.
-- **Smart Wallet Functionality**: Utilizes PasskeyKit for smart wallet management, simplifying transaction signing and potentially automating workflows.
-- **Reliable Transaction Submission**: Integrates with Launchtube to ensure robust and reliable submission of transactions to the Stellar network.
+To get your local instance running, you'll need to set up some environment variables. Create a `.env` file in your project root (copy `.env.example` if available, or create a new one) and fill in the following:
 
-## Environment Variables
+*   `NEXT_PUBLIC_SOROBAN_RPC_URL`: RPC URL for the Soroban testnet (e.g., `https://soroban-testnet.stellar.org`).
+*   `NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE`: Network passphrase (e.g., `"Test SDF Network ; September 2015"` for Testnet).
+*   `NEXT_PUBLIC_WALLET_WASM_HASH`: The WASM hash of your smart wallet contract.
+*   `LAUNCHTUBE_TOKEN`: Your API token for the Launchtube service.
+*   `NEXT_PUBLIC_LAUNCHTUBE_TOKEN`: (Can be the same as `LAUNCHTUBE_TOKEN`; used if client-side Launchtube calls are made, though backend usage is more common).
+*   `PLATFORM_ACCOUNT_PRIVATE_KEY`: Private key for a platform administrative account (⚠️ **Handle with extreme care!**).
+*   `SYSTEM_ACCOUNT_SECRET_KEY`: Secret key for the system's main treasury/operational account (⚠️ **Handle with extreme care!**).
 
-This project requires certain environment variables to be set for full functionality, especially for interacting with the Stellar network and smart contracts. Please create a `.env` file in the root of your project and include necessary configurations such as:
+**🔒 IMPORTANT SECURITY NOTE**: Never commit your actual secret keys or tokens in the `.env` file to a public repository. Always use an `.env.example` file to list the *required* variables with placeholder or example values for contributors.
 
-- NEXT_PUBLIC_SOROBAN_RPC_URL
-- NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015" # For Testnet
-- NEXT_PUBLIC_WALLET_WASM_HASH="ecd990f0b45ca6817149b6175f79b32efb442f35731985a084131e8265c4cd90"
-
-- LAUNCHTUBE_TOKEN
-- NEXT_PUBLIC_LAUNCHTUBE_TOKEN
-- PLATFORM_ACCOUNT_PRIVATE_KEY
-- SYSTEM_ACCOUNT_SECRET_KEY
-
-## Technical Overview
+## 🔧 Technical Overview
 
 ### Authentication
 
@@ -81,33 +84,32 @@ The app clearly distinguishes between:
 - **Platform Balance**: XLM deposited by the user into the platform's smart contract, available for use within the OnlyFrens application.
 
 ### Contracts
-- **Platform Contract ID**: `CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV` (Stellar Expert: `https://stellar.expert/contract/CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV`)
-- **NFT Contract ID**:  `CCNMXO54G46RHX6XFJ3ZBVRMXZIPRU7JUNRIITQNTZJWIB55YV6J2W54` (Stellar Expert: `https://stellar.expert/contract/CCNMXO54G46RHX6XFJ3ZBVRMXZIPRU7JUNRIITQNTZJWIB55YV6J2W54`)
+- **Platform Contract ID**: `CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV`
+  *   ([View on Stellar Expert 🔭](https://stellar.expert/contract/CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV))
+- **NFT Contract ID**:  `CCNMXO54G46RHX6XFJ3ZBVRMXZIPRU7JUNRIITQNTZJWIB55YV6J2W54`
+  *   ([View on Stellar Expert 🔭](https://stellar.expert/contract/CCNMXO54G46RHX6XFJ3ZBVRMXZIPRU7JUNRIITQNTZJWIB55YV6J2W54))
 - **System/Treasury Account Address**: `GA7DDI3FA5IK36OJEX3PHNPLRFAA6P6KSNW7RSDSBAD6CJMVWACS3XMU`
+  *   ([View on Stellar Expert 🔭](https://stellar.expert/accounts/GA7DDI3FA5IK36OJEX3PHNPLRFAA6P6KSNW7RSDSBAD6CJMVWACS3XMU))
 
-## The Narrative "Why"
+## 📖 The Narrative "Why"
 
 [Link to Narrative "Why" Document](./NARRATIVE_WHY.md)
 
-## Technical Design Documentation
+## ✅ Features (Target Scope for Hackathon)
 
-[Link to Technical Design Document](./TECHNICAL_DESIGN.md)
+*   [x] 🔑 User authentication with passkeys (leveraging PasskeyKit, provisions smart wallet)
+*   [x] 💰 Display user's XLM balance (fetched from Stellar network via user's smart wallet)
+*   [x] 💳 Display user's app balance (conceptually managed by platform contract, fetched on-chain)
+*   [x] 📥 Deposit XLM to app balance (on-chain interaction with platform/system account)
+*   [x] 🧑‍🎨 View featured creator profile (bio, teaser content)
+*   [x]  suscribirse Subscribe to creators (simulated or basic on-chain mechanism for content access)
+*   [x] ❤️ Tip creators (simulated or via platform contract with off-chain ledger for UX, on-chain settlement option)
+*   [x] 🖼️ Purchase premium content (NFT minting via Soroban NFT contract)
+*   [x] 🎬 View purchased premium content (NFT-gated access, verified on-chain)
+*   [x] ℹ️ Display minted NFT metadata
+*   [x] 📜 User action/event timeline (basic implementation, with vision for on-chain event derivation)
 
-## Features (some mocked)
-
-*   [x] User authentication with passkeys (leveraging PasskeyKit)
-*   [x] Display user's XLM balance (fetched from Stellar network)
-*   [x] Display user's app balance (managed by platform smart contract)
-*   [x] Deposit XLM to app balance (via smart contract interaction)
-*   [x] View featured creator profile (bio, teaser content)
-*   [x] Subscribe to creators (on-chain mechanism for content access)
-*   [x] Tip creators (via platform contract)
-*   [x] Purchase premium content (NFT minting via Soroban contract)
-*   [x] View purchased premium content (NFT-gated access)
-*   [x] Display minted NFT metadata
-*   [x] User action/event timeline (derived from on-chain events or backend tracking)
-
-## Technologies Used
+## 🛠️ Technologies Used
 
 *   Next.js
 *   Stellar SDK ([js-stellar-sdk](https://github.com/stellar/js-stellar-sdk))
@@ -117,6 +119,9 @@ The app clearly distinguishes between:
 *   TypeScript
 *   Tailwind CSS
 
+## 📦 Repository Information
 
-**Stellar Website:** 
-[https://developers.stellar.org/](https://developers.stellar.org/)
+*   **Project Name:** `stellar-onlyfrens-consensus-toronto-2025` (Matches GitHub repo name)
+*   **Tagline:** A Web3 creator support platform on Stellar, proving great UX is possible with Passkeys & Launchtube.
+*   **Keywords/Topics:** `stellar`, `rust`, `smart-contracts`, `consensus-toronto-2025`, `passkeys`, `nextjs`, `web3`, `creator-economy`, `blockchain`, `soroban`, `fintech`, `ux`, `passkeykit`, `launchtube`
+*   **Stellar Dev Portal:** [https://developers.stellar.org/](https://developers.stellar.org/)
