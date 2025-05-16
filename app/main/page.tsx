@@ -187,58 +187,63 @@ const ContentPreview = ({ premiumContent, onPurchase, hasAccess }: any) => {
 
 const TimelinePosts = ({ posts, isSubscribed }: any) => {
   return (
-    <div className="bg-white rounded-lg shadow-lg overflow-hidden my-8">
-      <div className="p-6 border-b">
+    <div className="bg-white rounded-lg shadow-lg overflow-hidden my-6">
+      <div className="p-4 border-b flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">Creator Timeline</h2>
-        <p className="text-gray-600 mt-1">
-          {isSubscribed 
-            ? "Latest updates from this creator" 
-            : "Subscribe to see creator updates"}
-        </p>
+        {isSubscribed && (
+          <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full flex items-center">
+            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
+            </svg>
+            Subscribed
+          </span>
+        )}
       </div>
       
       {isSubscribed ? (
         <div className="divide-y">
           {posts.map((post: any) => (
-            <div key={post.id} className="p-6 hover:bg-gray-50 transition duration-150">
+            <div key={post.id} className="p-4 hover:bg-gray-50 transition-colors duration-150">
               <div className="flex flex-col">
+                {/* Post content */}
                 <div className="mb-3">
-                  <p className="text-gray-700 text-lg">{post.content}</p>
+                  <p className="text-gray-700">{post.content}</p>
                 </div>
                 
+                {/* Post image */}
                 {post.imageUrl && (
-                  <div className="my-3 rounded-lg overflow-hidden border border-gray-200">
+                  <div className="my-3 rounded-lg overflow-hidden bg-gray-100">
                     <img 
                       src={post.imageUrl} 
                       alt="Post"
-                      className="w-full h-auto object-contain max-h-96" 
+                      className="w-full h-auto object-contain max-h-80" 
                     />
                   </div>
                 )}
                 
-                <div className="mt-3 flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <span className="inline-flex items-center text-gray-500 text-sm bg-gray-100 px-3 py-1 rounded-full">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {/* Post metadata and actions */}
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       {new Date(post.date).toLocaleDateString('en-US', { 
                         month: 'short', 
-                        day: 'numeric',
-                        year: 'numeric'
+                        day: 'numeric'
                       })}
                     </span>
                     
-                    <button className="flex items-center text-gray-500 hover:text-red-500 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    <button className="flex items-center gap-1 text-gray-500 hover:text-red-500 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill={post.hasLiked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                       </svg>
-                      <span>{post.likes}</span>
+                      <span className="text-xs">{post.likes}</span>
                     </button>
                   </div>
                   
                   <div>
-                    <button className="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                    <button className="text-indigo-600 hover:text-indigo-800 text-xs font-medium px-2 py-1 rounded-full hover:bg-indigo-50 transition-colors">
                       Reply
                     </button>
                   </div>
@@ -248,17 +253,19 @@ const TimelinePosts = ({ posts, isSubscribed }: any) => {
           ))}
         </div>
       ) : (
-        <div className="p-8 text-center">
-          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-lg border border-indigo-100 inline-block mx-auto mb-6">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-indigo-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            <h3 className="text-gray-800 font-bold text-xl mb-2">Exclusive Content Access</h3>
-            <p className="text-gray-600 text-base max-w-xs mx-auto">
-              Subscribe to access the creator's timeline and stay updated with their latest posts and content.
+        <div className="p-6 text-center">
+          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-5 rounded-lg border border-indigo-100 inline-block mx-auto mb-4 max-w-md">
+            <div className="bg-white rounded-full p-3 w-14 h-14 mx-auto mb-3 shadow-sm flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h3 className="text-gray-800 font-bold text-lg mb-2">Exclusive Content Access</h3>
+            <p className="text-gray-600 text-sm max-w-xs mx-auto mb-4">
+              Subscribe to access the creator's timeline and stay updated with their latest posts.
             </p>
-            <button className="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-6 rounded-full transition shadow-md text-sm inline-flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <button className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-5 rounded-full transition shadow-sm text-sm inline-flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
               </svg>
               Subscribe for 10 XLM/month
