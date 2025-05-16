@@ -11,6 +11,9 @@ const FACTORY_CONTRACT_ID = 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HH
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
 
+// Real NFT contract ID - use for actual minting
+const NFT_CONTRACT_ID = 'CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR';
+
 // Contract IDs for demo purposes
 const DUMMY_SUBSCRIPTION_CONTRACT_ID = 'CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV';
 const DUMMY_TIPJAR_CONTRACT_ID = 'CCIFA3JIYPVQILXSPZX5OMT6B5X4LPIMHXHZCD57AOWQNKTDTVAZZTBV';
@@ -366,7 +369,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (!user) throw new Error("User not logged in");
     setIsLoading(true);
     try {
-      // Mock deposit - just update the local state
+      // In-memory mock - just update the local state
       const newPlatformBalance = user.platformBalanceXLM + amount;
       const newXlmBalance = (parseFloat(currentXlmBalance) - amount).toFixed(7);
       
@@ -388,7 +391,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (!user) throw new Error("User not logged in");
     setIsLoading(true);
     try {
-      // Mock withdrawal - just update the local state
+      // In-memory mock - just update the local state
       const newPlatformBalance = Math.max(0, user.platformBalanceXLM - amount);
       const newXlmBalance = (parseFloat(currentXlmBalance) + amount).toFixed(7);
       
@@ -411,7 +414,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (user.platformBalanceXLM < price) throw new Error("Insufficient platform balance.");
     setIsLoading(true);
     try {
-      // Mock subscription - create a subscription object and update balances
+      // In-memory mock - create subscription and update balances
       const newSubscription = {
         creatorId,
         subscribedSince: new Date().toISOString(),
@@ -444,7 +447,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (user.platformBalanceXLM < amount) throw new Error("Insufficient platform balance.");
     setIsLoading(true);
     try {
-      // Mock tip - just update the balance
+      // In-memory mock - just update the balance
       const newPlatformBalance = user.platformBalanceXLM - amount;
       
       // Add action to history
@@ -476,24 +479,47 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   
   const purchaseNft = async (nftPurchaseDetails: Omit<NftData, 'id' | 'purchaseDate' | 'contractAddress' | 'tokenId'> & { id: string, price: number, creatorId: string }) => {
     if (!user) throw new Error("User not logged in");
-    const { price, creatorId } = nftPurchaseDetails;
+    const { price, creatorId, id: nftId } = nftPurchaseDetails;
     
     if (user.platformBalanceXLM < price) throw new Error("Insufficient platform balance.");
     setIsLoading(true);
     try {
-      // Mock NFT purchase - create NFT and update balances
-      const newNft: NftData = {
-        id: `nft_${Date.now()}`,
-        name: nftPurchaseDetails.name,
-        description: nftPurchaseDetails.description,
-        imageUrl: nftPurchaseDetails.imageUrl,
-        purchaseDate: new Date().toISOString(),
-        contractAddress: `mock_contract_${Date.now()}`,
-        tokenId: `token_${Date.now()}`,
-        creatorId,
-      };
-      
+      // First, update the in-memory state
       const newPlatformBalance = user.platformBalanceXLM - price;
+      
+      // Call backend to mint the NFT
+      console.log(`Calling backend API to mint NFT ${nftId}`);
+      
+      const response = await fetch('/api/nft/mint', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          username: user.username,
+          walletAddress: user.smartWalletAddress,
+          nftId,
+          name: nftPurchaseDetails.name,
+          description: nftPurchaseDetails.description,
+          imageUrl: nftPurchaseDetails.imageUrl,
+          creatorId,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to mint NFT');
+      }
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to mint NFT');
+      }
+      
+      // Use the NFT data returned from the backend
+      const newNft: NftData = result.nft;
       
       // Add new NFT and action to history
       const newAction: UserAction = {

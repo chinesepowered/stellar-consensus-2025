@@ -1,6 +1,55 @@
-# OnlyFrens
+# OnlyFrens - Web3 Creator Economy Platform
 
-OnlyFrens is a web3 platform designed to support uplifting creators, allowing users to subscribe, tip, and purchase exclusive content via NFTs. It aims to provide a seamless web2-like user experience by leveraging Stellar's passkey technology.
+A platform for creators to monetize their content using Soroban smart contracts and passkey authentication.
+
+## Features
+
+- **Passkey Authentication**: Login and register without passwords using WebAuthn and PasskeyKit
+- **Content Monetization**: Support creators through subscriptions, tips, and NFT purchases
+- **Blockchain Integration**: Built on Stellar, using PasskeyKit for wallet management
+
+## Quick Start
+
+1. Clone the repository
+2. Install dependencies:
+   ```
+   npm install
+   ```
+3. Run the development server:
+   ```
+   npm run dev
+   ```
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## Environment Variables
+
+For NFT minting functionality, set the following environment variables:
+
+```
+NEXT_PUBLIC_SYSTEM_ACCOUNT_SECRET_KEY=YOUR_STELLAR_SECRET_KEY
+```
+
+## Technical Overview
+
+### Authentication
+
+Authentication is handled with PasskeyKit, allowing users to create and manage Stellar accounts using passkeys (WebAuthn). User data is persisted in localStorage for demonstration purposes, making the app work without a backend.
+
+### Transactions
+
+- **Regular Transactions**: For the hackathon demo, regular transactions (tips, subscriptions, deposits) are simulated in-memory and persisted to localStorage.
+- **NFT Minting**: NFT minting uses the actual Soroban contract deployed at CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR.
+
+### Contracts
+
+- NFT Contract: CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR
+- Factory Contract: CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC
+
+### Important Config Values
+
+- DUMMY_WALLET_WASM_HASH: 'ecd990f0b45ca6817149b6175f79b32efb442f35731985a084131e8265c4cd90'
+- RPC_URL: 'https://soroban-testnet.stellar.org'
+- NETWORK_PASSPHRASE: 'Test SDF Network ; September 2015'
 
 ## The Narrative "Why"
 

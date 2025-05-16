@@ -294,14 +294,44 @@ export default function HomePage() {
     nft => nft.id === creator.premiumContent.id
   );
   
-  const handlePurchaseContent = () => {
+  const handlePurchaseContent = async () => {
     if (!user?.isLoggedIn) {
       setShowAuthModal(true);
       return;
     }
     
     if (hasPremiumAccess) {
-      setShowPremiumContent(true);
+      // Verify NFT ownership with backend before showing premium content
+      try {
+        const response = await fetch('/api/nft/verify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            walletAddress: user.smartWalletAddress,
+            nftId: creator.premiumContent.id,
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to verify NFT ownership');
+        }
+        
+        const result = await response.json();
+        
+        if (!result.success || !result.hasAccess) {
+          alert('Access verification failed. Please try again.');
+          return;
+        }
+        
+        // Approved - show premium content
+        setShowPremiumContent(true);
+      } catch (error: any) {
+        console.error('Error verifying NFT access:', error);
+        alert(`Verification failed: ${error.message}`);
+      }
       return;
     }
     
@@ -481,12 +511,26 @@ export default function HomePage() {
             </div>
             <div className="p-6">
               <div className="relative pb-[56.25%] bg-gray-200 rounded-lg mb-4">
-                <div className="absolute inset-0 flex items-center justify-center text-gray-500">
-                  [Video Player Placeholder]
-                </div>
+                <video 
+                  className="absolute inset-0 w-full h-full object-cover"
+                  src="/premium.mp4" 
+                  controls 
+                  poster={creator.premiumContent.imageUrl}
+                  controlsList="nodownload"
+                />
               </div>
               <h3 className="text-xl font-bold text-gray-800 mb-2">{creator.premiumContent.name}</h3>
               <p className="text-gray-700">{creator.premiumContent.description}</p>
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center">
+                  <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="ml-2 text-sm text-gray-600">
+                    This premium content is unlocked because you own the NFT.
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
