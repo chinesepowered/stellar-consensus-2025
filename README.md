@@ -14,36 +14,6 @@ Watch a quick walkthrough of OnlyFrens in action:
 
 [Watch Demo Video](https://github.com/chinesepowered/stellar-consensus-2025/raw/refs/heads/main/public/demo.mp4)
 
-### Screenshots
-
-Here are some glimpses of the OnlyFrens interface:
-
-<p align="center">
-  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
-    <img src="/public/screen1.jpg" alt="OnlyFrens Homepage" width="100%" /><br />
-    <em>Homepage &amp; Guide</em>
-  </span>
-  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
-    <img src="/public/screen2.jpg" alt="OnlyFrens Support Modal" width="100%" /><br />
-    <em>Support Modal</em>
-  </span>
-</p>
-<p align="center">
-  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
-    <img src="/public/screen3.jpg" alt="OnlyFrens Premium Content Locked" width="100%" /><br />
-    <em>Premium Locked</em>
-  </span>
-  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
-    <img src="/public/screen4.jpg" alt="OnlyFrens Premium Content Unlocked" width="100%" /><br />
-    <em>Premium Unlocked</em>
-  </span>
-</p>
-<p align="center">
-  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
-    <img src="/public/screen5.jpg" alt="OnlyFrens Creator Timeline" width="100%" /><br />
-    <em>Creator Timeline</em>
-  </span>
-</p>
 
 ## 💡 Core UX Philosophy & Key Features
 
@@ -166,3 +136,34 @@ The app clearly distinguishes between:
 *   **Tagline:** A Web3 creator support platform on Stellar, proving great UX is possible with Passkeys & Launchtube.
 *   **Keywords/Topics:** `stellar`, `rust`, `smart-contracts`, `consensus-toronto-2025`, `passkeys`, `nextjs`, `web3`, `creator-economy`, `blockchain`, `soroban`, `fintech`, `ux`, `passkeykit`, `launchtube`
 *   **Stellar Dev Portal:** [https://developers.stellar.org/](https://developers.stellar.org/)
+
+### Screenshots
+
+Here are some glimpses of the OnlyFrens interface:
+
+<p align="center">
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
+    <img src="/public/screen1.jpg" alt="OnlyFrens Homepage" width="100%" /><br />
+    <em>Homepage &amp; Guide</em>
+  </span>
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
+    <img src="/public/screen2.jpg" alt="OnlyFrens Support Modal" width="100%" /><br />
+    <em>Support Modal</em>
+  </span>
+</p>
+<p align="center">
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
+    <img src="/public/screen3.jpg" alt="OnlyFrens Premium Content Locked" width="100%" /><br />
+    <em>Premium Locked</em>
+  </span>
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
+    <img src="/public/screen4.jpg" alt="OnlyFrens Premium Content Unlocked" width="100%" /><br />
+    <em>Premium Unlocked</em>
+  </span>
+</p>
+<p align="center">
+  <span style="display: inline-block; text-align: center; margin: 10px; width: 40%;">
+    <img src="/public/screen5.jpg" alt="OnlyFrens Creator Timeline" width="100%" /><br />
+    <em>Creator Timeline</em>
+  </span>
+</p>
