@@ -5,7 +5,7 @@ import { useUser } from '@/contexts/UserContext';
 import PasskeyAuth from '@/components/auth/PasskeyAuth';
 
 export default function WalletPage() {
-  const { user, currentXlmBalance, depositToPlatform, withdrawFromPlatform, isLoading, fetchBalances } = useUser();
+  const { user, currentXlmBalance, depositToPlatform, withdrawFromPlatform, isLoading, fetchBalances, fundWalletWithTestnet } = useUser();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [amount, setAmount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
@@ -45,39 +45,8 @@ export default function WalletPage() {
 
   // Advanced wallet functions
   const fundWallet = async () => {
-    // Check for wallet availability through context instead of window global
-    if (!user?.smartWalletAddress) {
-      alert("Wallet not available. Please ensure you're logged in with a valid passkey wallet.");
-      return;
-    }
-    
     try {
-      const amount = 100; // 100 XLM
-      alert(`This would send ${amount} test XLM to your wallet in a real implementation.`);
-      
-      // This would be implemented with real code in a production version
-      /*
-      // We would need access to the fundPubkey and fundSigner from the demo
-      const { built, ...transfer } = await native.transfer({
-        to: contractId,
-        from: fundPubkey,
-        amount: BigInt(amount * 10_000_000),
-      });
-
-      await transfer.signAuthEntries({
-        address: fundPubkey,
-        signAuthEntry: fundSigner.signAuthEntry,
-      });
-
-      const res = await server.send(built!);
-      console.log(res);
-      
-      await fetchBalances();
-      */
-      
-      // For demo, just update the balance
-      alert("Wallet funded with test XLM!");
-      fetchBalances();
+      await fundWalletWithTestnet();
     } catch (error) {
       console.error("Error funding wallet:", error);
       alert(`Failed to fund wallet: ${error.message}`);
@@ -431,10 +400,10 @@ export default function WalletPage() {
                         disabled={isLoading}
                         className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Fund Wallet with 100 Test XLM
+                        {isLoading ? 'Funding...' : 'Fund Wallet with 100 Test XLM'}
                       </button>
                       <p className="text-xs text-gray-500 mt-1">
-                        Adds test XLM to your wallet (simulated for hackathon)
+                        Adds 100 test XLM to your wallet from the Stellar testnet
                       </p>
                     </div>
                     

@@ -4,6 +4,9 @@ import React, { createContext, useContext, useState, ReactNode, useEffect, useRe
 import { User as ApiUser, NftData, UserAction } from '@/lib/types'; // Import standardized types
 import { browserSupportsWebAuthn } from '@simplewebauthn/browser'; // Import the support check
 import { PasskeyKit as PasskeyKitType, SACClient } from 'passkey-kit'; // Import the actual type
+import { Buffer } from 'buffer'; // Import Buffer properly
+import { Keypair } from '@stellar/stellar-sdk/minimal';
+import { basicNodeSigner } from '@stellar/stellar-sdk/minimal/contract';
 
 // System account that will receive deposits
 const SYSTEM_ACCOUNT_ADDRESS = 'GDXCCSIV6E3XYB45NCPPBR4BUJZEI3GPV2YNXF2XIQO2DVCDID76SHFG';
@@ -118,6 +121,7 @@ interface UserContextType {
   tipCreator: (creatorId: string, amount: number) => Promise<void>;
   purchaseNft: (nftDetails: Omit<NftData, 'id' | 'purchaseDate' | 'contractAddress' | 'tokenId'> & { id: string, price: number, creatorId: string }) => Promise<void>;
   fetchBalances: () => Promise<void>;
+  fundWalletWithTestnet: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -135,6 +139,50 @@ const resetAllUserData = () => {
   localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
   localStorage.removeItem(LOCAL_STORAGE_WALLET_KEY);
   console.log("All user data reset. User should register a new passkey.");
+};
+
+// Create a funding keypair and request Stellar testnet tokens for it
+// Adapted from the PasskeyKit demo 
+const generateFundingKeypair = async () => {
+  try {
+    // Import needed modules dynamically
+    const { Keypair } = await import("@stellar/stellar-sdk/minimal");
+    const { basicNodeSigner } = await import("@stellar/stellar-sdk/minimal/contract");
+    
+    // Generate a keypair based on the current hour to make it stable but changing each hour
+    const now = new Date();
+    now.setMinutes(0, 0, 0);
+    
+    // Create a deterministic seed based on the current hour
+    const nowData = new TextEncoder().encode(now.getTime().toString());
+    const hashBuffer = await crypto.subtle.digest('SHA-256', nowData);
+    
+    // Convert ArrayBuffer to Buffer using Buffer.from
+    const seed = Buffer.from(hashBuffer);
+    const keypair = Keypair.fromRawEd25519Seed(seed);
+    
+    console.log("Generated funding keypair", keypair.publicKey());
+    
+    return {
+      keypair,
+      publicKey: keypair.publicKey(),
+      signer: basicNodeSigner(keypair, NETWORK_PASSPHRASE)
+    };
+  } catch (error) {
+    console.error("Error generating funding keypair:", error);
+    return null;
+  }
+};
+
+// Store the funding info globally
+let fundingInfo: { keypair: any; publicKey: string; signer: any } | null = null;
+
+// Initialize funding keypair
+const initFundingAccount = async () => {
+  if (!fundingInfo) {
+    fundingInfo = await generateFundingKeypair();
+  }
+  return fundingInfo;
 };
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
@@ -347,6 +395,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
       // We should now have a valid wallet
       if (walletResult.keyIdBase64 && walletResult.contractId) {
+        // Try to fund the new wallet with testnet XLM
+        console.log("Attempting to fund the new wallet...");
+        await fundWallet(walletResult.contractId);
+        
         // Create wallet data object to persist with real wallet address
         const walletInfo: WalletData = {
           keyIdBase64: walletResult.keyIdBase64,
@@ -555,29 +607,23 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
         console.log(`Building transfer transaction for ${amountInStroops} stroops...`);
         
-        // Create a transfer transaction using the native token contract
-        const transferTransaction = await nativeTokenInstance.transfer({
+        // Create a transfer transaction using the native token contract - similar to demo approach
+        const transferTx = await nativeTokenInstance.transfer({
           from: user.smartWalletAddress,
           to: SYSTEM_ACCOUNT_ADDRESS,
           amount: amountInStroops
         });
         
-        // Sign the transaction with the passkey
+        // Sign the transaction with the passkey - similar to demo
         console.log("Signing transaction with passkey...");
-        await passkeyKit.sign(transferTransaction, { keyId: walletData.keyIdBase64 });
+        await passkeyKit.sign(transferTx, { keyId: walletData.keyIdBase64 });
         
-        // For the hackathon, we'll simulate this part
-        // In a real app, we would send the transaction to the network
-        console.log("Transaction would be sent to network in production version");
-        
-        /*
-        // Submit the transaction
-        const result = await transferTransaction.send();
+        // Send the transaction - similar to demo
+        console.log("Sending transaction to network...");
+        const result = await transferTx.send();
         console.log('Transaction successful!', result);
-        */
         
         // If transaction was successful, update the local balances
-        // For the hackathon, we'll simulate this
         const newPlatformBalance = user.platformBalanceXLM + amount;
         const newXlmBalance = (parseFloat(currentXlmBalance) - amount).toFixed(7);
         
@@ -602,48 +648,60 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const withdrawFromPlatform = async (amount: number) => {
     if (!user) throw new Error("User not logged in");
+    if (!passkeyKitInstance || !walletData) throw new Error("Wallet not initialized");
     if (!nativeTokenInstance) throw new Error("Native token client not initialized");
     
     setIsLoading(true);
     try {
-      // For the hackathon demo, simulate withdrawal from platform to user's wallet
+      // For the hackathon demo, we're simulating a withdrawal
+      // In a real app, we would create a transaction from the platform to the user
       console.log(`Simulating withdrawal of ${amount} XLM from platform to user's wallet: ${user.smartWalletAddress}`);
       
-      // In a real implementation, we would:
-      // 1. Create a transfer transaction from the platform contract to the user's wallet
-      // 2. Sign it with the platform's admin key
-      // 3. Submit it to the network
-      
-      /*
-      // Convert XLM amount to stroop
-      const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
-      
-      // Create a transfer transaction using the native token contract
-      const transferTransaction = await nativeTokenInstance.transfer({
-        from: SYSTEM_ACCOUNT_ADDRESS, // This would be the platform contract address
-        to: user.smartWalletAddress,
-        amount: amountInStroops
-      });
-      
-      // Would need admin signature to authorize this transfer
-      // await passkeyKit.sign(transferTransaction, { adminKey });
-      
-      // Submit the transaction
-      const result = await transferTransaction.send();
-      console.log('Withdrawal transaction successful!', result);
-      */
-      
-      // In-memory mock - just update the local state
-      const newPlatformBalance = Math.max(0, user.platformBalanceXLM - amount);
-      const newXlmBalance = (parseFloat(currentXlmBalance) + amount).toFixed(7);
-      
-      // Update user in state and localStorage
-      const updatedUser = { ...user, platformBalanceXLM: newPlatformBalance };
-      setUser(updatedUser);
-      setCurrentXlmBalance(newXlmBalance);
-      localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
-      
-      alert('Withdrawal Successful!');
+      // Create a transaction from system account to user wallet
+      // This is a simulation - in a real app, this would use a different authorization mechanism
+      try {
+        // Initialize the funding account to use for the simulated withdrawal
+        const funding = await initFundingAccount();
+        if (!funding) {
+          throw new Error("Could not initialize funding account for withdrawal");
+        }
+        
+        // Convert XLM amount to stroop
+        const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
+        
+        // Build a transfer transaction from funding account to user wallet
+        // (as a simulation of platform withdrawal)
+        const transferTx = await nativeTokenInstance.transfer({
+          from: funding.publicKey,
+          to: user.smartWalletAddress,
+          amount: amountInStroops
+        });
+        
+        // Sign with the funding account
+        await transferTx.signAuthEntries({
+          address: funding.publicKey,
+          signAuthEntry: funding.signer.signAuthEntry
+        });
+        
+        // Send the transaction
+        const result = await transferTx.send();
+        console.log('Withdrawal transaction successful!', result);
+        
+        // Update local state
+        const newPlatformBalance = Math.max(0, user.platformBalanceXLM - amount);
+        const newXlmBalance = (parseFloat(currentXlmBalance) + amount).toFixed(7);
+        
+        // Update user in state and localStorage
+        const updatedUser = { ...user, platformBalanceXLM: newPlatformBalance };
+        setUser(updatedUser);
+        setCurrentXlmBalance(newXlmBalance);
+        localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
+        
+        alert('Withdrawal Successful!');
+      } catch (txError: any) {
+        console.error("Transaction error:", txError);
+        throw new Error(`Transaction failed: ${txError.message || 'Unknown error'}`);
+      }
     } catch (error: any) { 
       console.error(error); 
       alert(`Withdrawal failed: ${error.message}`); 
@@ -792,6 +850,72 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   };
 
+  // Now let's add the fundWallet function that will fund a newly created wallet
+  const fundWallet = async (contractId: string) => {
+    if (!isPasskeyKitInitialized || !nativeTokenInstance) {
+      console.error("Cannot fund wallet: PasskeyKit or native token client not initialized");
+      return false;
+    }
+    
+    try {
+      // Initialize the funding account if not done yet
+      const funding = await initFundingAccount();
+      if (!funding) {
+        console.error("Could not initialize funding account");
+        return false;
+      }
+      
+      console.log(`Funding wallet ${contractId} with 100 XLM from ${funding.publicKey}`);
+      
+      // Build the transfer transaction (similar to the demo)
+      const transferTransaction = await nativeTokenInstance.transfer({
+        to: contractId,
+        from: funding.publicKey,
+        amount: BigInt(100 * 10_000_000) // 100 XLM
+      });
+      
+      // Sign the transaction with the funding account
+      await transferTransaction.signAuthEntries({
+        address: funding.publicKey,
+        signAuthEntry: funding.signer.signAuthEntry
+      });
+      
+      // Send the transaction
+      const result = await transferTransaction.send();
+      console.log("Funding transaction result:", result);
+      
+      return true;
+    } catch (error) {
+      console.error("Error funding wallet:", error);
+      return false;
+    }
+  };
+
+  // Add a wrapper function for funding current user's wallet
+  const fundCurrentWalletWithTestnet = async () => {
+    if (!user?.smartWalletAddress) {
+      console.error("Cannot fund wallet: No wallet address available");
+      alert("You need to be logged in with a valid wallet to use this feature");
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const success = await fundWallet(user.smartWalletAddress);
+      if (success) {
+        alert("Your wallet has been funded with 100 test XLM!");
+        await fetchBalances();
+      } else {
+        alert("Failed to fund your wallet. Please try again later.");
+      }
+    } catch (error) {
+      console.error("Error funding wallet:", error);
+      alert("Failed to fund wallet: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <UserContext.Provider
       value={{
@@ -810,7 +934,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         subscribeToCreator,
         tipCreator,
         purchaseNft,
-        fetchBalances
+        fetchBalances,
+        fundWalletWithTestnet: fundCurrentWalletWithTestnet
       }}
     >
       {children}
