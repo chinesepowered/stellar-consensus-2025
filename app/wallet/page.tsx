@@ -15,6 +15,7 @@ export default function WalletPage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false); // Local loading state for operations
   const addressRef = useRef<HTMLInputElement>(null);
+  const [depositMethod, setDepositMethod] = useState<'wallet' | 'creditcard'>('wallet');
 
   // Fetch balances only once when component mounts
   useEffect(() => {
@@ -289,61 +290,153 @@ export default function WalletPage() {
               <p className="text-gray-600 mb-4">
                 Deposit XLM from your wallet to the platform to support creators and unlock premium content.
               </p>
-              <div className="mb-4">
-                <div className="flex justify-between mb-1">
-                  <label htmlFor="deposit-amount" className="block text-sm font-medium text-gray-700">
-                    Amount (XLM)
-                  </label>
-                  <span className="text-xs text-gray-500">
-                    Available: {isLoading ? 'Loading...' : `${currentXlmBalance} XLM`}
-                  </span>
-                </div>
-                <div className="relative rounded-md shadow-sm">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    id="deposit-amount"
-                    className="block w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="0.0000000"
-                    value={amount || ''}
-                    onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-                    max={parseFloat(currentXlmBalance)}
-                  />
-                </div>
+              
+              {/* Deposit method selector */}
+              <div className="flex mb-6 bg-gray-100 p-1 rounded-lg w-fit">
+                <button
+                  className={`px-4 py-2 text-sm rounded-md transition ${depositMethod === 'wallet' ? 'bg-white shadow-sm text-indigo-700 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setDepositMethod('wallet')}
+                >
+                  From Wallet
+                </button>
+                <button
+                  className={`px-4 py-2 text-sm rounded-md transition ${depositMethod === 'creditcard' ? 'bg-white shadow-sm text-indigo-700 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setDepositMethod('creditcard')}
+                >
+                  Credit Card
+                </button>
               </div>
               
-              <div className="flex justify-between items-center">
-                <div className="flex space-x-2">
-                  {[5, 10, 25, 50].map((quickAmount) => (
-                    <button
-                      key={quickAmount}
-                      onClick={() => setAmount(quickAmount)}
-                      disabled={parseFloat(currentXlmBalance) < quickAmount}
-                      className="px-3 py-1 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {quickAmount} XLM
-                    </button>
-                  ))}
-                </div>
-                
-                <div className="flex space-x-2">
-                  <button
-                    onClick={handleDeposit}
-                    disabled={isLoading || amount <= 0 || parseFloat(currentXlmBalance) < amount}
-                    className="bg-indigo-600 text-white px-6 py-2 rounded-md font-medium hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isLoading ? 'Processing...' : 'Deposit'}
-                  </button>
+              {depositMethod === 'wallet' ? (
+                <>
+                  <div className="mb-4">
+                    <div className="flex justify-between mb-1">
+                      <label htmlFor="deposit-amount" className="block text-sm font-medium text-gray-700">
+                        Amount (XLM)
+                      </label>
+                      <span className="text-xs text-gray-500">
+                        Available: {isLoading ? 'Loading...' : `${currentXlmBalance} XLM`}
+                      </span>
+                    </div>
+                    <div className="relative rounded-md shadow-sm">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        id="deposit-amount"
+                        className="block w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="0.0000000"
+                        value={amount || ''}
+                        onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
+                        max={parseFloat(currentXlmBalance)}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <div className="flex space-x-2">
+                      {[5, 10, 25, 50].map((quickAmount) => (
+                        <button
+                          key={quickAmount}
+                          onClick={() => setAmount(quickAmount)}
+                          disabled={parseFloat(currentXlmBalance) < quickAmount}
+                          className="px-3 py-1 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {quickAmount} XLM
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handleDeposit}
+                        disabled={isLoading || amount <= 0 || parseFloat(currentXlmBalance) < amount}
+                        className="bg-indigo-600 text-white px-6 py-2 rounded-md font-medium hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isLoading ? 'Processing...' : 'Deposit'}
+                      </button>
+                      
+                      <button
+                        onClick={handleLaunchtubeDeposit}
+                        disabled={isLoading || amount <= 0 || parseFloat(currentXlmBalance) < amount}
+                        className="bg-green-600 text-white px-6 py-2 rounded-md font-medium hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isLoading ? 'Processing...' : 'Via Launchtube'}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="bg-white border border-gray-200 rounded-lg p-5">
+                  <div className="text-sm text-gray-500 mb-4">
+                    Purchase XLM directly with your credit card to fund your platform balance.
+                  </div>
+                  
+                  <div className="mb-4">
+                    <label htmlFor="cc-amount" className="block text-sm font-medium text-gray-700 mb-1">
+                      Amount to Purchase (XLM)
+                    </label>
+                    <input
+                      type="text"
+                      id="cc-amount"
+                      className="block w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="50"
+                      defaultValue="50"
+                    />
+                    
+                  </div>
+                  
+                  <div className="mb-4">
+                    <label htmlFor="cc-number" className="block text-sm font-medium text-gray-700 mb-1">
+                      Card Number
+                    </label>
+                    <input
+                      type="text"
+                      id="cc-number"
+                      className="block w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="4242 4242 4242 4242"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label htmlFor="cc-expiry" className="block text-sm font-medium text-gray-700 mb-1">
+                        Expiration (MM/YY)
+                      </label>
+                      <input
+                        type="text"
+                        id="cc-expiry"
+                        className="block w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="12/25"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="cc-cvc" className="block text-sm font-medium text-gray-700 mb-1">
+                        CVC
+                      </label>
+                      <input
+                        type="text"
+                        id="cc-cvc"
+                        className="block w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        placeholder="123"
+                      />
+                    </div>
+                  </div>
                   
                   <button
-                    onClick={handleLaunchtubeDeposit}
-                    disabled={isLoading || amount <= 0 || parseFloat(currentXlmBalance) < amount}
-                    className="bg-green-600 text-white px-6 py-2 rounded-md font-medium hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700 transition"
+                    onClick={() => alert('This is a demo feature. In a full implementation, this would process a credit card payment and add XLM to your platform balance.')}
                   >
-                    {isLoading ? 'Processing...' : 'Via Launchtube'}
+                    Purchase XLM
                   </button>
+                  
+                  <div className="flex items-center mt-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-gray-400 mr-2">
+                      <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-xs text-gray-500">Secure payment processing via Stellar anchors</span>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ) : (
             <div>

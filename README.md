@@ -102,6 +102,10 @@ The app clearly distinguishes between:
 - **System/Treasury Account Address**: `GA7DDI3FA5IK36OJEX3PHNPLRFAA6P6KSNW7RSDSBAD6CJMVWACS3XMU`
   *   ([View on Stellar Expert 🔭](https://stellar.expert/accounts/GA7DDI3FA5IK36OJEX3PHNPLRFAA6P6KSNW7RSDSBAD6CJMVWACS3XMU))
 
+## 🛠️ Technical Design Deep Dive
+
+[Link to Technical Design Document](./TECHNICAL_DESIGN.md)
+
 ## 📖 The Narrative "Why"
 
 [Link to Narrative "Why" Document](./NARRATIVE_WHY.md)
