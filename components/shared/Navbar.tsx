@@ -9,7 +9,7 @@ import PasskeyAuth from '@/components/auth/PasskeyAuth'; // To be shown in a mod
 // interface MockUserState { ... }
 
 const Navbar = () => {
-  const { user, logout, currentXlmBalance, depositToPlatform, isLoading } = useUser();
+  const { user, logout, depositToPlatform, isLoading } = useUser();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [depositAmount, setDepositAmount] = useState<number>(10);
@@ -21,13 +21,6 @@ const Navbar = () => {
   const handleDeposit = async () => {
     if (depositAmount <= 0) {
       alert("Please enter a valid amount");
-      return;
-    }
-    
-    // Check if user has enough XLM
-    const availableXlm = parseFloat(currentXlmBalance);
-    if (isNaN(availableXlm) || availableXlm < depositAmount) {
-      alert(`Insufficient XLM balance. You have ${currentXlmBalance} XLM available.`);
       return;
     }
     
@@ -55,26 +48,6 @@ const Navbar = () => {
               <>
                 <div className="hidden md:block">
                   <div className="flex items-center space-x-4">
-                    {/* Wallet balance */}
-                    <div className="text-sm text-gray-700">
-                      <div 
-                        className="bg-gradient-to-r from-indigo-50 to-blue-50 px-3 py-1 rounded-full border border-indigo-100 flex items-center cursor-pointer hover:bg-indigo-100"
-                        onClick={() => setShowDepositModal(true)}
-                        title="Click to deposit"
-                      >
-                        <svg className="w-4 h-4 text-indigo-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className="font-medium">
-                          {isLoading ? (
-                            <span className="animate-pulse">Loading...</span>
-                          ) : (
-                            `${parseFloat(currentXlmBalance) === 0 ? '0' : currentXlmBalance} XLM`
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                    
                     {/* Platform balance */}
                     <div className="text-sm text-gray-700">
                       <Link 
@@ -182,9 +155,6 @@ const Navbar = () => {
               <div className="mb-4">
                 <div className="flex justify-between mb-2">
                   <label htmlFor="amount" className="block text-sm font-medium text-gray-700">Amount to Deposit</label>
-                  <span className="text-xs text-gray-500">
-                    Available: {isLoading ? 'Loading...' : `${currentXlmBalance} XLM`}
-                  </span>
                 </div>
                 <div className="mt-1 relative rounded-md shadow-sm">
                   <input
@@ -197,7 +167,6 @@ const Navbar = () => {
                     onChange={(e) => setDepositAmount(Number(e.target.value))}
                     min="0"
                     step="1"
-                    max={parseFloat(currentXlmBalance)}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center">
                     <span className="text-gray-500 sm:text-sm px-2">XLM</span>
@@ -222,7 +191,7 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={handleDeposit}
-                  disabled={isLoading || depositAmount <= 0 || parseFloat(currentXlmBalance) < depositAmount}
+                  disabled={isLoading || depositAmount <= 0}
                   className="flex-1 bg-green-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   {isLoading ? 'Processing...' : `Deposit ${depositAmount} XLM`}

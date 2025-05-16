@@ -528,7 +528,7 @@ export default function WalletPage() {
                 </div>
                 <div className="ml-3">
                   <p className="text-sm text-yellow-700">
-                    These advanced functions are simplified for the hackathon demo. In a production app, they would interact directly with the Stellar network.
+                    These advanced functions are for managing the passkey wallet.
                   </p>
                 </div>
               </div>

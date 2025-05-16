@@ -34,14 +34,14 @@ const initialFeaturedCreator = {
   posts: [
     {
       id: 'post1',
-      content: 'Fresh batch of roti dough, ready for the day! #thaifood #streetfood',
+      content: 'Cooking the banana roti! #thaifood #streetfood',
       imageUrl: '/cooking1.jpg',
       date: new Date(Date.now() - 86400000 * 2).toISOString(),
       likes: 24
     },
     {
       id: 'post2',
-      content: 'Happy customer enjoying a banana Nutella roti! 😊',
+      content: 'Almost ready, just needs some seasoning! 😊',
       imageUrl: '/cooking2.jpg',
       date: new Date(Date.now() - 86400000).toISOString(),
       likes: 36
@@ -202,27 +202,46 @@ const TimelinePosts = ({ posts, isSubscribed }: any) => {
       {isSubscribed ? (
         <div className="divide-y">
           {posts.map((post: any) => (
-            <div key={post.id} className="p-6">
-              <div className="flex items-start">
-                <div className="flex-grow">
-                  <p className="text-gray-700 mb-2">{post.content}</p>
-                  {post.imageUrl && (
-                    <div className="mt-3 rounded-lg overflow-hidden max-h-96">
-                      <img 
-                        src={post.imageUrl} 
-                        alt="Post"
-                        className="w-full h-auto object-cover" 
-                      />
-                    </div>
-                  )}
-                  <div className="mt-3 flex items-center text-gray-500 text-sm">
-                    <span>{new Date(post.date).toLocaleDateString()}</span>
-                    <span className="mx-2">•</span>
-                    <button className="flex items-center hover:text-indigo-600">
+            <div key={post.id} className="p-6 hover:bg-gray-50 transition duration-150">
+              <div className="flex flex-col">
+                <div className="mb-3">
+                  <p className="text-gray-700 text-lg">{post.content}</p>
+                </div>
+                
+                {post.imageUrl && (
+                  <div className="my-3 rounded-lg overflow-hidden border border-gray-200">
+                    <img 
+                      src={post.imageUrl} 
+                      alt="Post"
+                      className="w-full h-auto object-contain max-h-96" 
+                    />
+                  </div>
+                )}
+                
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <span className="inline-flex items-center text-gray-500 text-sm bg-gray-100 px-3 py-1 rounded-full">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {new Date(post.date).toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </span>
+                    
+                    <button className="flex items-center text-gray-500 hover:text-red-500 transition-colors">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                       </svg>
-                      {post.likes}
+                      <span>{post.likes}</span>
+                    </button>
+                  </div>
+                  
+                  <div>
+                    <button className="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                      Reply
                     </button>
                   </div>
                 </div>
@@ -232,15 +251,18 @@ const TimelinePosts = ({ posts, isSubscribed }: any) => {
         </div>
       ) : (
         <div className="p-8 text-center">
-          <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 inline-block mx-auto">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-lg border border-indigo-100 inline-block mx-auto mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-indigo-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            <h3 className="text-gray-700 font-medium mt-4">Subscribe to View Timeline</h3>
-            <p className="text-gray-500 text-sm mt-2 max-w-xs mx-auto">
-              Subscribe to this creator to view their exclusive timeline posts and updates.
+            <h3 className="text-gray-800 font-bold text-xl mb-2">Exclusive Content Access</h3>
+            <p className="text-gray-600 text-base max-w-xs mx-auto">
+              Subscribe to access the creator's timeline and stay updated with their latest posts and content.
             </p>
-            <button className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-full transition shadow-md text-sm">
+            <button className="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-6 rounded-full transition shadow-md text-sm inline-flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+              </svg>
               Subscribe for 10 XLM/month
             </button>
           </div>
@@ -293,10 +315,11 @@ const GetStartedGuide = ({ onLogin }: { onLogin: () => void }) => {
 
 export default function HomePage() {
   const { user, isLoading, subscribeToCreator, tipCreator, purchaseNft } = useUser();
-  const [creator] = useState(initialFeaturedCreator);
+  const [creator, setCreator] = useState(initialFeaturedCreator);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showPremiumContent, setShowPremiumContent] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
+  const [supportStatus, setSupportStatus] = useState<{ success: boolean; message: string; isLoading: boolean } | null>(null);
   
   const isSubscribedToCreator = user?.isLoggedIn && user.subscriptions.some(
     sub => sub.creatorId === creator.username && (!sub.expires || new Date(sub.expires) > new Date())
@@ -334,7 +357,11 @@ export default function HomePage() {
         const result: { success?: boolean; hasAccess?: boolean } = await response.json();
         
         if (!result.success || !result.hasAccess) {
-          alert('Access verification failed. Please try again.');
+          setSupportStatus({
+            success: false,
+            message: 'Access verification failed. Please try again.',
+            isLoading: false
+          });
           return;
         }
         
@@ -342,7 +369,11 @@ export default function HomePage() {
         setShowPremiumContent(true);
       } catch (error: any) {
         console.error('Error verifying NFT access:', error);
-        alert(`Verification failed: ${error.message}`);
+        setSupportStatus({
+          success: false,
+          message: `Verification failed: ${error.message}`,
+          isLoading: false
+        });
       }
       return;
     }
@@ -350,18 +381,39 @@ export default function HomePage() {
     // Prepare the purchase
     const { id, name, description, imageUrl, premiumContentUrl, premiumContentType, price = 0, creatorId = '' } = creator.premiumContent;
     
-    purchaseNft({ 
-      id, 
-      name, 
-      description, 
-      imageUrl, 
-      premiumContentUrl, 
-      premiumContentType,
-      price, 
-      creatorId 
-    }).catch(err => {
-      alert(`Purchase failed: ${err.message}`);
-    });
+    try {
+      setSupportStatus({ success: false, message: '', isLoading: true });
+      await purchaseNft({ 
+        id, 
+        name, 
+        description, 
+        imageUrl, 
+        premiumContentUrl, 
+        premiumContentType,
+        price, 
+        creatorId 
+      });
+      setSupportStatus({
+        success: true,
+        message: 'Successfully purchased premium content!',
+        isLoading: false
+      });
+      
+      // Update support goal
+      setCreator(prev => ({
+        ...prev,
+        supportGoal: {
+          ...prev.supportGoal,
+          current: prev.supportGoal.current + price
+        }
+      }));
+    } catch (err: any) {
+      setSupportStatus({
+        success: false,
+        message: `Purchase failed: ${err.message}`,
+        isLoading: false
+      });
+    }
   };
   
   const handleSupportCreator = () => {
@@ -370,6 +422,7 @@ export default function HomePage() {
       return;
     }
     
+    setSupportStatus(null);
     setShowSupportModal(true);
   };
   
@@ -380,10 +433,35 @@ export default function HomePage() {
     }
     
     try {
+      setSupportStatus({ success: false, message: '', isLoading: true });
       await subscribeToCreator(creator.username, 10); // 10 XLM per month subscription
-      setShowSupportModal(false); // Close the modal on success
+      
+      // Update support goal
+      setCreator(prev => ({
+        ...prev,
+        supportGoal: {
+          ...prev.supportGoal,
+          current: prev.supportGoal.current + 10
+        }
+      }));
+      
+      setSupportStatus({
+        success: true,
+        message: 'Successfully subscribed to creator!',
+        isLoading: false
+      });
+      
+      // Close modal after a delay to show success message
+      setTimeout(() => {
+        setShowSupportModal(false);
+        setSupportStatus(null);
+      }, 2000);
     } catch (e: any) {
-      alert(`Subscription failed: ${e.message}`);
+      setSupportStatus({
+        success: false,
+        message: `Subscription failed: ${e.message}`,
+        isLoading: false
+      });
     }
   };
   
@@ -394,10 +472,35 @@ export default function HomePage() {
     }
     
     try {
+      setSupportStatus({ success: false, message: '', isLoading: true });
       await tipCreator(creator.username, amount);
-      setShowSupportModal(false);
+      
+      // Update support goal
+      setCreator(prev => ({
+        ...prev,
+        supportGoal: {
+          ...prev.supportGoal,
+          current: prev.supportGoal.current + amount
+        }
+      }));
+      
+      setSupportStatus({
+        success: true,
+        message: `Successfully sent ${amount} XLM tip to ${creator.displayName}!`,
+        isLoading: false
+      });
+      
+      // Close modal after a delay to show success message
+      setTimeout(() => {
+        setShowSupportModal(false);
+        setSupportStatus(null);
+      }, 2000);
     } catch (e: any) {
-      alert(`Tip failed: ${e.message}`);
+      setSupportStatus({
+        success: false,
+        message: `Tip failed: ${e.message}`,
+        isLoading: false
+      });
     }
   };
 
@@ -447,60 +550,92 @@ export default function HomePage() {
               <h2 className="text-lg font-semibold text-gray-800">Support {creator.displayName}</h2>
             </div>
             <div className="p-6">
-              <p className="text-gray-600 mb-4">Choose how you'd like to support this creator:</p>
-              
-              <div className="space-y-4">
-                <button 
-                  onClick={handleSubscribe}
-                  className="w-full p-3 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-left flex justify-between items-center"
-                >
-                  <div>
-                    <span className="font-medium text-indigo-800">Monthly Subscription</span>
-                    <p className="text-sm text-gray-600">Access to exclusive timeline updates</p>
+              {supportStatus ? (
+                <div className={`mb-6 p-4 rounded-lg ${supportStatus.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                  {supportStatus.isLoading ? (
+                    <div className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      {supportStatus.success ? (
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      {supportStatus.message}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <p className="text-gray-600 mb-4">Choose how you'd like to support this creator:</p>
+                  
+                  <div className="space-y-4">
+                    <button 
+                      onClick={handleSubscribe}
+                      className="w-full p-3 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg text-left flex justify-between items-center"
+                    >
+                      <div>
+                        <span className="font-medium text-indigo-800">Monthly Subscription</span>
+                        <p className="text-sm text-gray-600">Access to exclusive timeline updates</p>
+                      </div>
+                      <span className="text-indigo-700 font-bold">10 XLM/mo</span>
+                    </button>
+                    
+                    <button 
+                      onClick={() => handleTip(5)}
+                      className="w-full p-3 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg text-left flex justify-between items-center"
+                    >
+                      <div>
+                        <span className="font-medium text-green-800">Small Tip</span>
+                        <p className="text-sm text-gray-600">Every bit helps!</p>
+                      </div>
+                      <span className="text-green-700 font-bold">5 XLM</span>
+                    </button>
+                    
+                    <button 
+                      onClick={() => handleTip(20)}
+                      className="w-full p-3 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg text-left flex justify-between items-center"
+                    >
+                      <div>
+                        <span className="font-medium text-green-800">Medium Tip</span>
+                        <p className="text-sm text-gray-600">Show your appreciation</p>
+                      </div>
+                      <span className="text-green-700 font-bold">20 XLM</span>
+                    </button>
+                    
+                    <button 
+                      onClick={() => handleTip(50)}
+                      className="w-full p-3 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg text-left flex justify-between items-center"
+                    >
+                      <div>
+                        <span className="font-medium text-green-800">Large Tip</span>
+                        <p className="text-sm text-gray-600">Make a significant impact</p>
+                      </div>
+                      <span className="text-green-700 font-bold">50 XLM</span>
+                    </button>
                   </div>
-                  <span className="text-indigo-700 font-bold">10 XLM/mo</span>
-                </button>
-                
-                <button 
-                  onClick={() => handleTip(5)}
-                  className="w-full p-3 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg text-left flex justify-between items-center"
-                >
-                  <div>
-                    <span className="font-medium text-green-800">Small Tip</span>
-                    <p className="text-sm text-gray-600">Every bit helps!</p>
-                  </div>
-                  <span className="text-green-700 font-bold">5 XLM</span>
-                </button>
-                
-                <button 
-                  onClick={() => handleTip(20)}
-                  className="w-full p-3 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg text-left flex justify-between items-center"
-                >
-                  <div>
-                    <span className="font-medium text-green-800">Medium Tip</span>
-                    <p className="text-sm text-gray-600">Show your appreciation</p>
-                  </div>
-                  <span className="text-green-700 font-bold">20 XLM</span>
-                </button>
-                
-                <button 
-                  onClick={() => handleTip(50)}
-                  className="w-full p-3 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg text-left flex justify-between items-center"
-                >
-                  <div>
-                    <span className="font-medium text-green-800">Large Tip</span>
-                    <p className="text-sm text-gray-600">Make a significant impact</p>
-                  </div>
-                  <span className="text-green-700 font-bold">50 XLM</span>
-                </button>
-              </div>
+                </>
+              )}
               
               <div className="mt-6 flex justify-end">
                 <button 
-                  onClick={() => setShowSupportModal(false)}
+                  onClick={() => {
+                    setShowSupportModal(false);
+                    setSupportStatus(null);
+                  }}
                   className="px-4 py-2 text-gray-600 hover:text-gray-800"
                 >
-                  Cancel
+                  {supportStatus?.success ? 'Close' : 'Cancel'}
                 </button>
               </div>
             </div>

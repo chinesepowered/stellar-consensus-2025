@@ -6,7 +6,7 @@ import { useUser } from '@/contexts/UserContext';
 import PasskeyAuth from '@/components/auth/PasskeyAuth';
 
 const Navbar = () => {
-  const { user, logout, currentXlmBalance } = useUser();
+  const { user, logout } = useUser();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handleAuthComplete = () => {
@@ -29,11 +29,6 @@ const Navbar = () => {
               <>
                 <div className="hidden md:block">
                   <div className="flex items-center space-x-4">
-                    <div className="text-sm text-gray-700">
-                      <span className="bg-gray-100 px-2 py-1 rounded-md">
-                        {currentXlmBalance} XLM
-                      </span>
-                    </div>
                     <div className="text-sm">
                       <span className="text-gray-500">@{user.username}</span>
                     </div>
