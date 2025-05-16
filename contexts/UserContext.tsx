@@ -123,6 +123,7 @@ interface UserContextType {
   fetchBalances: () => Promise<void>;
   fundWalletWithTestnet: () => Promise<void>;
   depositViaLaunchtube: (amount: number) => Promise<boolean>;
+  hasPremiumAccess: () => boolean;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -1327,6 +1328,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const hasPremiumAccess = useCallback((): boolean => {
+    if (!user || !user.ownedNfts || user.ownedNfts.length === 0) {
+      return false;
+    }
+    return user.ownedNfts.some(nft => nft.contractAddress === NFT_CONTRACT_ID);
+  }, [user]);
+
   return (
     <UserContext.Provider
       value={{
@@ -1347,7 +1355,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         purchaseNft,
         fetchBalances,
         fundWalletWithTestnet: fundCurrentWalletWithTestnet,
-        depositViaLaunchtube
+        depositViaLaunchtube,
+        hasPremiumAccess,
       }}
     >
       {children}

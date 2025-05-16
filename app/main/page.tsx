@@ -23,12 +23,12 @@ const initialFeaturedCreator = {
   },
   premiumContent: {
     id: 'prem1-roti-recipe',
-    name: 'Exclusive Family Recipe',
-    description: 'Learn to make my family\'s secret recipe for authentic Thai roti, passed down for generations! This premium content includes a step-by-step video guide and written instructions.',
-    imageUrl: 'https://images.unsplash.com/photo-1534620808146-d33bb39128b2?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
+    name: 'My secret plea for support',
+    description: "A teary plea for support for her family and the reasons why she's struggling",
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/en/5/59/Padlock.svg',
     price: 50,
     creatorId: 'roti_lady30',
-    premiumContentUrl: '/videos/roti_lady_recipe.mp4',
+    premiumContentUrl: '/premium.mp4',
     premiumContentType: 'video',
   } as NftData,
   posts: [
@@ -135,7 +135,7 @@ const CreatorHero = ({ creator, onSupport, onUnlock, isLoggedIn }: any) => {
   );
 };
 
-const ContentPreview = ({ premiumContent, onPurchase }: any) => {
+const ContentPreview = ({ premiumContent, onPurchase, hasAccess }: any) => {
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden my-8">
       <div className="p-6 border-b">
@@ -160,15 +160,27 @@ const ContentPreview = ({ premiumContent, onPurchase }: any) => {
         <div className="p-6 md:w-2/3">
           <h3 className="text-xl font-bold text-gray-800">{premiumContent.name}</h3>
           <p className="mt-3 text-gray-700">{premiumContent.description}</p>
-          <button 
-            onClick={onPurchase}
-            className="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-full transition shadow-md inline-flex items-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-            </svg>
-            Unlock This Content
-          </button>
+          {hasAccess ? (
+            <button
+              onClick={onPurchase}
+              className="mt-6 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-full transition shadow-md inline-flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              View Content
+            </button>
+          ) : (
+            <button 
+              onClick={onPurchase}
+              className="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-full transition shadow-md inline-flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+              </svg>
+              Unlock This Content
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -319,7 +331,7 @@ export default function HomePage() {
           throw new Error('Failed to verify NFT ownership');
         }
         
-        const result = await response.json();
+        const result: { success?: boolean; hasAccess?: boolean } = await response.json();
         
         if (!result.success || !result.hasAccess) {
           alert('Access verification failed. Please try again.');
@@ -404,6 +416,7 @@ export default function HomePage() {
       <ContentPreview 
         premiumContent={creator.premiumContent}
         onPurchase={handlePurchaseContent}
+        hasAccess={hasPremiumAccess}
       />
       
       <TimelinePosts 
@@ -513,9 +526,9 @@ export default function HomePage() {
               <div className="relative pb-[56.25%] bg-gray-200 rounded-lg mb-4">
                 <video 
                   className="absolute inset-0 w-full h-full object-cover"
-                  src="/premium.mp4" 
+                  src={creator.premiumContent.premiumContentUrl} 
                   controls 
-                  poster={creator.premiumContent.imageUrl}
+                  autoPlay
                   controlsList="nodownload"
                 />
               </div>

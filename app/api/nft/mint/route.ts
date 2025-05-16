@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // NFT Contract ID
-const NFT_CONTRACT_ID = 'CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR';
+const NFT_CONTRACT_ID = 'CCNMXO54G46RHX6XFJ3ZBVRMXZIPRU7JUNRIITQNTZJWIB55YV6J2W54';
 
 // This would be imported from Stellar SDK in a production app
 // For hackathon, we'll just mock the response
@@ -20,17 +20,17 @@ export async function POST(request: NextRequest) {
   try {
     const body: NftMintRequest = await request.json();
     
-    // Get the system account secret key from environment variable
-    const systemAccountKey = process.env.SYSTEM_ACCOUNT_SECRET_KEY;
-    if (!systemAccountKey) {
-      console.error('Missing SYSTEM_ACCOUNT_SECRET_KEY environment variable');
+    // Get the platform's private key from environment variable
+    const platformPrivateKey = process.env.PLATFORM_ACCOUNT_PRIVATE_KEY;
+    if (!platformPrivateKey) {
+      console.error('Missing PLATFORM_ACCOUNT_PRIVATE_KEY environment variable for /api/nft/mint');
       return NextResponse.json({ 
         success: false, 
         message: 'Server configuration error'
       }, { status: 500 });
     }
     
-    console.log(`[API] Minting NFT ${body.nftId} for ${body.username} (${body.walletAddress})`);
+    console.log(`[API /api/nft/mint] Recording NFT purchase: ${body.nftId} for ${body.username} (${body.walletAddress})`);
     
     // In a production app, we would:
     // 1. Import Stellar SDK
