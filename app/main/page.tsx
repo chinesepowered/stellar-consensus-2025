@@ -11,7 +11,7 @@ import { NftData } from '@/lib/types';
 const initialFeaturedCreator = {
   username: 'roti_lady30',
   displayName: 'Somying',
-  bio: 'A street vendor in Thailand struggling to keep afloat. Selling delicious homemade roti to support my family.',
+  bio: 'A street vendor in Thailand struggling to keep afloat.',
   location: 'Bangkok, Thailand',
   teaserVideoUrl: '/videos/roti_lady_teaser.mp4',
   bannerImageUrl: '/banner.jpg',
@@ -75,8 +75,8 @@ const CreatorHero = ({ creator, onSupport, onUnlock, isLoggedIn }: any) => {
             {/* Creator Info */}
             <div className="flex-grow text-center md:text-left">
               <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-0.5">{creator.displayName}</h1>
-              <p className="text-gray-500 mb-2">@{creator.username} • {creator.location}</p>
-              <p className="text-gray-700 max-w-3xl mb-3">{creator.bio}</p>
+              <p className="text-xs text-gray-500 mb-1">@{creator.username} • {creator.location}</p>
+              <p className="text-sm text-gray-700 max-w-lg mb-3">{creator.bio}</p>
               
               {/* Support Goal */}
               <div className="max-w-md mb-4">
