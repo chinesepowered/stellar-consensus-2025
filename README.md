@@ -10,7 +10,7 @@ A platform where creators meet cutting-edge Web3 technology, designed to prove t
 
 Watch a quick walkthrough of OnlyFrens in action:
 
-<video src="/demo.mp4" controls width="100%">
+<video src="/public/demo.mp4" controls width="100%">
   Your browser does not support the video tag.
 </video>
 
@@ -18,19 +18,19 @@ Watch a quick walkthrough of OnlyFrens in action:
 
 Here are some glimpses of the OnlyFrens interface:
 
-![OnlyFrens Homepage](/screenshots/screen1.jpg)
+![OnlyFrens Homepage](/public/screen1.jpg)
 *Caption: OnlyFrens Homepage - Getting Started Guide and Creator Preview*
 
-![OnlyFrens Support Modal](/screenshots/screen2.jpg)
+![OnlyFrens Support Modal](/public/screen2.jpg)
 *Caption: Support Modal - Multiple options to support a creator*
 
-![OnlyFrens Premium Content Locked](/screenshots/screen3.jpg)
+![OnlyFrens Premium Content Locked](/public/screen3.jpg)
 *Caption: Premium Content - Locked state, prompting user to unlock*
 
-![OnlyFrens Premium Content Unlocked](/screenshots/screen4.jpg)
+![OnlyFrens Premium Content Unlocked](/public/screen4.jpg)
 *Caption: Premium Content - Unlocked state, video accessible*
 
-![OnlyFrens Creator Timeline](/screenshots/screen5.jpg)
+![OnlyFrens Creator Timeline](/public/screen5.jpg)
 *Caption: Creator Timeline - Posts and updates from a subscribed creator*
 
 ## 💡 Core UX Philosophy & Key Features
