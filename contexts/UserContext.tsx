@@ -117,12 +117,12 @@ interface UserContextType {
   // Platform actions
   depositToPlatform: (amount: number) => Promise<void>;
   withdrawFromPlatform: (amount: number) => Promise<void>;
-  subscribeToCreator: (creatorId: string, price: number) => Promise<void>;
-  tipCreator: (creatorId: string, amount: number) => Promise<void>;
+  subscribeToCreator: (creatorId: string, price: number) => Promise<{ success: boolean; error?: string }>;
+  tipCreator: (creatorId: string, amount: number) => Promise<{ success: boolean; error?: string }>;
   purchaseNft: (
     nftDetails: Omit<NftData, 'id' | 'purchaseDate' | 'contractAddress' | 'tokenId'> & { id: string, price: number, creatorId: string },
     options?: { directOnChainOnly?: boolean }
-  ) => Promise<void>;
+  ) => Promise<{ success: boolean; error?: string; nft?: NftData }>;
   fetchBalances: () => Promise<void>;
   fundWalletWithTestnet: () => Promise<void>;
   depositViaLaunchtube: (amount: number) => Promise<boolean>;
@@ -785,32 +785,54 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     if (user.platformBalanceXLM < price) throw new Error("Insufficient platform balance.");
     setIsLoading(true);
     try {
-      // In-memory mock - create subscription and update balances
-      const newSubscription = {
-        creatorId,
-        subscribedSince: new Date().toISOString(),
-        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-      };
-      
+      // In-memory mock - just update the balance and add subscription
       const newPlatformBalance = user.platformBalanceXLM - price;
       
-      // Add new subscription and update user
-      const updatedSubscriptions = [...user.subscriptions.filter(s => s.creatorId !== creatorId), newSubscription];
+      // Set up a subscription that expires in 30 days
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 30);
+      
+      // Match the existing structure of subscription objects
+      const newSubscription = { 
+        creatorId,
+        subscribedSince: new Date().toISOString(),
+        expires: expiryDate.toISOString()
+      };
+      
+      // Add action to history
+      const newAction: UserAction = {
+        id: `action_${Date.now()}`,
+        type: "SUBSCRIPTION",
+        description: `Subscribed to creator ${creatorId} for ${price} XLM/month`,
+        timestamp: new Date().toISOString(),
+        targetId: creatorId,
+        amount: price
+      };
+      
+      const updatedSubscriptions = [
+        newSubscription,
+        ...user.subscriptions.filter(s => s.creatorId !== creatorId)
+      ];
+      
       const updatedUser = { 
         ...user, 
         subscriptions: updatedSubscriptions, 
-        platformBalanceXLM: newPlatformBalance 
+        platformBalanceXLM: newPlatformBalance,
+        actionHistory: [newAction, ...user.actionHistory]
       };
       
       setUser(updatedUser);
       localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
       
-      alert('Subscribed successfully!');
+      // No alert - returning success object instead
+      return { success: true };
     } catch (error: any) { 
       console.error(error); 
-      alert(`Subscription failed: ${error.message}`); 
+      // Return error instead of showing alert
+      return { success: false, error: error.message };
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const tipCreator = async (creatorId: string, amount: number) => {
@@ -840,12 +862,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setUser(updatedUser);
       localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
       
-      alert('Tip Successful!');
+      // No alert - the UI component will show success status instead
+      return { success: true };
     } catch (error: any) { 
       console.error(error); 
-      alert(`Tip failed: ${error.message}`); 
+      // Return error instead of showing alert
+      return { success: false, error: error.message };
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
   
   const purchaseNft = async (
@@ -951,8 +976,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           console.log("On-chain minting successful:", mintingResult);
         } catch (mintingError: any) {
           console.error("Error during on-chain NFT minting:", mintingError);
-          alert(`NFT purchase recorded in platform, but on-chain minting failed: ${mintingError.message}. Please contact support.`);
-          // Do not re-throw if we want the rest of the UI update to proceed based on platform DB record
+          // Return partial success but include error message about on-chain part
+          return {
+            success: true,
+            error: `NFT purchase recorded in platform, but on-chain minting failed: ${mintingError.message}. Please contact support.`,
+            nft: newNft
+          };
         }
         // ---- END On-chain minting call ----
       }
@@ -977,10 +1006,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setUser(updatedUser);
       localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
 
-      alert('NFT Purchase action completed!'); // Unified alert
+      // Return success with the minted NFT
+      return { success: true, nft: newNft };
     } catch (error: any) {
-      console.error("NFT Purchase Error:", error); // Changed log prefix
-      alert(`NFT Purchase failed: ${error.message}`);
+      console.error("NFT Purchase Error:", error);
+      return { success: false, error: error.message };
     } finally {
       setIsLoading(false);
     }

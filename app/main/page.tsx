@@ -14,7 +14,7 @@ const initialFeaturedCreator = {
   bio: 'A street vendor in Thailand struggling to keep afloat. Selling delicious homemade roti to support my family.',
   location: 'Bangkok, Thailand',
   teaserVideoUrl: '/videos/roti_lady_teaser.mp4',
-  bannerImageUrl: 'https://images.unsplash.com/photo-1496412705862-e0088f16f791?ixlib=rb-1.2.1&auto=format&fit=crop&w=1200&q=80',
+  bannerImageUrl: '/banner.jpg',
   profileImageUrl: '/profile.jpg',
   supportGoal: {
     current: 340,

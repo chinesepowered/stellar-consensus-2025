@@ -13,6 +13,7 @@ const Navbar = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [depositAmount, setDepositAmount] = useState<number>(10);
+  const [depositStatus, setDepositStatus] = useState<{ success: boolean; message: string; isLoading: boolean } | null>(null);
 
   const handleAuthComplete = () => {
     setShowAuthModal(false);
@@ -20,15 +21,34 @@ const Navbar = () => {
 
   const handleDeposit = async () => {
     if (depositAmount <= 0) {
-      alert("Please enter a valid amount");
+      setDepositStatus({
+        success: false,
+        message: "Please enter a valid amount",
+        isLoading: false
+      });
       return;
     }
     
     try {
+      setDepositStatus({ success: false, message: "", isLoading: true });
       await depositToPlatform(depositAmount);
-      setShowDepositModal(false);
+      setDepositStatus({
+        success: true,
+        message: `Successfully deposited ${depositAmount} XLM to your platform balance!`,
+        isLoading: false
+      });
+      
+      // Close modal after a short delay to show success message
+      setTimeout(() => {
+        setShowDepositModal(false);
+        setDepositStatus(null);
+      }, 2000);
     } catch (error: any) {
-      alert(`Deposit failed: ${error.message}`);
+      setDepositStatus({
+        success: false,
+        message: `Deposit failed: ${error.message}`,
+        isLoading: false
+      });
     }
   };
 
@@ -50,16 +70,16 @@ const Navbar = () => {
                   <div className="flex items-center space-x-4">
                     {/* Platform balance */}
                     <div className="text-sm text-gray-700">
-                      <Link 
-                        href="/wallet"
-                        className="bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1 rounded-full border border-green-100 flex items-center hover:bg-green-100"
-                        title="Go to wallet"
+                      <div
+                        onClick={() => setShowDepositModal(true)}
+                        className="bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1 rounded-full border border-green-100 flex items-center hover:bg-green-100 cursor-pointer"
+                        title="Click to deposit"
                       >
                         <svg className="w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                         </svg>
                         <span className="font-medium">{user.platformBalanceXLM.toFixed(2)} XLM</span>
-                      </Link>
+                      </div>
                     </div>
                     
                     <div className="text-sm">
@@ -142,7 +162,10 @@ const Navbar = () => {
                   Deposit XLM to Platform
                 </h2>
                 <button 
-                  onClick={() => setShowDepositModal(false)}
+                  onClick={() => {
+                    setShowDepositModal(false);
+                    setDepositStatus(null);
+                  }}
                   className="text-gray-500 hover:text-gray-700"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -152,57 +175,106 @@ const Navbar = () => {
               </div>
             </div>
             <div className="p-6">
-              <div className="mb-4">
-                <div className="flex justify-between mb-2">
-                  <label htmlFor="amount" className="block text-sm font-medium text-gray-700">Amount to Deposit</label>
+              {depositStatus && (
+                <div className={`mb-6 p-4 rounded-lg ${depositStatus.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                  {depositStatus.isLoading ? (
+                    <div className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing deposit...
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      {depositStatus.success ? (
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      {depositStatus.message}
+                    </div>
+                  )}
                 </div>
-                <div className="mt-1 relative rounded-md shadow-sm">
-                  <input
-                    type="number"
-                    name="amount"
-                    id="amount"
-                    className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-3 pr-12 sm:text-sm border-gray-300 rounded-md"
-                    placeholder="Amount"
-                    value={depositAmount}
-                    onChange={(e) => setDepositAmount(Number(e.target.value))}
-                    min="0"
-                    step="1"
-                  />
-                  <div className="absolute inset-y-0 right-0 flex items-center">
-                    <span className="text-gray-500 sm:text-sm px-2">XLM</span>
-                  </div>
-                </div>
-              </div>
+              )}
               
-              <div className="bg-gray-50 p-3 rounded-md mb-4">
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clipRule="evenodd" />
-                    </svg>
+              {!depositStatus?.success && (
+                <>
+                  <div className="mb-4">
+                    <div className="flex justify-between mb-2">
+                      <label htmlFor="amount" className="block text-sm font-medium text-gray-700">Amount to Deposit</label>
+                    </div>
+                    <div className="mt-1 relative rounded-md shadow-sm">
+                      <input
+                        type="number"
+                        name="amount"
+                        id="amount"
+                        className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-3 pr-12 sm:text-sm border-gray-300 rounded-md"
+                        placeholder="Amount"
+                        value={depositAmount}
+                        onChange={(e) => setDepositAmount(Number(e.target.value))}
+                        min="0"
+                        step="1"
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center">
+                        <span className="text-gray-500 sm:text-sm px-2">XLM</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="ml-3 text-sm text-gray-600">
-                    <p>Deposit XLM from your wallet to use on the platform for subscriptions, tips, and NFT purchases.</p>
+                  
+                  <div className="bg-gray-50 p-3 rounded-md mb-4">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3 text-sm text-gray-600">
+                        <p>Deposit XLM from your wallet to use on the platform for subscriptions, tips, and NFT purchases.</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
               
               <div className="flex space-x-3">
-                <button
-                  type="button"
-                  onClick={handleDeposit}
-                  disabled={isLoading || depositAmount <= 0}
-                  className="flex-1 bg-green-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? 'Processing...' : `Deposit ${depositAmount} XLM`}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowDepositModal(false)}
-                  className="flex-1 bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Cancel
-                </button>
+                {!depositStatus?.success ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleDeposit}
+                      disabled={isLoading || depositAmount <= 0 || depositStatus?.isLoading}
+                      className="flex-1 bg-green-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                      {isLoading || depositStatus?.isLoading ? 'Processing...' : `Deposit ${depositAmount} XLM`}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDepositModal(false);
+                        setDepositStatus(null);
+                      }}
+                      className="flex-1 bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDepositModal(false);
+                      setDepositStatus(null);
+                    }}
+                    className="flex-1 bg-green-100 py-2 px-4 border border-green-300 rounded-md shadow-sm text-sm font-medium text-green-800 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  >
+                    Close
+                  </button>
+                )}
               </div>
             </div>
           </div>
