@@ -21,12 +21,12 @@ export async function POST(request: NextRequest) {
     const body: NftMintRequest = await request.json();
     
     // Get the platform's private key from environment variable
-    const platformPrivateKey = process.env.PLATFORM_ACCOUNT_PRIVATE_KEY;
+    const platformPrivateKey = process.env.SYSTEM_ACCOUNT_SECRET_KEY;
     if (!platformPrivateKey) {
-      console.error('Missing PLATFORM_ACCOUNT_PRIVATE_KEY environment variable for /api/nft/mint');
+      console.error('Missing SYSTEM_ACCOUNT_SECRET_KEY environment variable for /api/nft/mint');
       return NextResponse.json({ 
         success: false, 
-        message: 'Server configuration error'
+        message: 'Server configuration error: Missing system account private key'
       }, { status: 500 });
     }
     

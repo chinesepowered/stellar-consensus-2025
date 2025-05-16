@@ -381,6 +381,7 @@ export default function HomePage() {
     
     try {
       await subscribeToCreator(creator.username, 10); // 10 XLM per month subscription
+      setShowSupportModal(false); // Close the modal on success
     } catch (e: any) {
       alert(`Subscription failed: ${e.message}`);
     }

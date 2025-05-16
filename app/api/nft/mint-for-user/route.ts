@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { Keypair, TransactionBuilder, Networks, TimeoutInfinite, Operation, xdr, Soroban } from '@stellar/stellar-sdk';
-import { Server as SorobanRpcServer } from '@stellar/stellar-sdk/rpc';
+import { Keypair } from '@stellar/stellar-sdk';
 import { Client as NftContractClient } from '../../../../contracts/contracts/nft/bindings/src'; 
+import { basicNodeSigner } from '@stellar/stellar-sdk/contract';
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
@@ -23,24 +23,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
-    const platformPrivateKey = process.env.PLATFORM_ACCOUNT_PRIVATE_KEY;
+    console.log("All environment variables:", JSON.stringify(process.env, null, 2));
+    console.log("Attempting to read PLATFORM_ACCOUNT_PRIVATE_KEY (for debug, not used):", process.env.PLATFORM_ACCOUNT_PRIVATE_KEY);
+    console.log("Attempting to read SYSTEM_ACCOUNT_SECRET_KEY:", process.env.SYSTEM_ACCOUNT_SECRET_KEY);
+    console.log("Attempting to read LAUNCHTUBE_TOKEN:", process.env.LAUNCHTUBE_TOKEN);
+
+    const platformPrivateKey = process.env.SYSTEM_ACCOUNT_SECRET_KEY;
     if (!platformPrivateKey) {
-      console.error('PLATFORM_ACCOUNT_PRIVATE_KEY is not set');
-      return NextResponse.json({ message: 'Server configuration error: Missing platform private key' }, { status: 500 });
+      console.error('SYSTEM_ACCOUNT_SECRET_KEY is not set');
+      return NextResponse.json({ message: 'Server configuration error: Missing system account private key' }, { status: 500 });
     }
     
-    const launchtubeToken = process.env.PLATFORM_LAUNCHTUBE_TOKEN;
+    const launchtubeToken = process.env.LAUNCHTUBE_TOKEN;
     if (!launchtubeToken) {
-      console.error('PLATFORM_LAUNCHTUBE_TOKEN is not set');
+      console.error('LAUNCHTUBE_TOKEN is not set');
       return NextResponse.json({ message: 'Server configuration error: Missing Launchtube token' }, { status: 500 });
     }
 
     const platformKeypair = Keypair.fromSecret(platformPrivateKey);
-    const platformAddress = platformKeypair.publicKey();
-
-    const server = new SorobanRpcServer(RPC_URL, {
-      allowHttp: RPC_URL.startsWith('http://'),
-    });
 
     const nftClient = new NftContractClient({
       contractId: NFT_CONTRACT_ID,
@@ -48,46 +48,29 @@ export async function POST(request: Request) {
       networkPassphrase: NETWORK_PASSPHRASE,
     });
 
-    console.log(`Preparing to mint NFT: Name="${name}", To=${userWalletAddress}, By Platform=${platformAddress} via Launchtube`);
+    console.log(`Preparing to mint NFT: Name="${name}", To=${userWalletAddress} via Launchtube`);
 
-    const assembledTx = await nftClient.mint({
+    const mintOperationArgs = {
       to: userWalletAddress,
       name: name,
       description: description,
       image_url: imageUrl,
-    }, {
-      fee: 100000, 
-      timeoutInSeconds: 30,
-      simulate: true,
-    });
-
-    const sorobanData: Soroban.SorobanTransactionData = assembledTx.build();
-    if (!sorobanData) {
-        throw new Error("assembledTx.build() did not return SorobanTransactionData.");
-    }
-
-    const sourceAccount = await server.getAccount(platformAddress);
-    const networkFee = (parseInt(sorobanData.resourceFee().toString()) + 100).toString();
-
-    const txBuilder = new TransactionBuilder(sourceAccount, {
-        fee: networkFee, 
-        networkPassphrase: NETWORK_PASSPHRASE,
-    })
-    .addOperation(Operation.restoreFootprint({ footprint: sorobanData.footprint() }))
-    .addOperation(
-        Operation.invokeHostFunction({
-            func: sorobanData.invokeHostFunctionOp().hostFunction(),
-            parameters: sorobanData.invokeHostFunctionOp().parameters(),
-            auth: sorobanData.invokeHostFunctionOp().auth() || [],
-        })
-    )
-    .setTimeout(TimeoutInfinite);
+    };
     
-    const transaction = txBuilder.build();
-    transaction.sign(platformKeypair);
-    const signedXDR = transaction.toEnvelope().toXDR("base64");
+    const assembledTx = await nftClient.mint(
+      mintOperationArgs, 
+      {
+        fee: 100000,
+      }
+    );
 
-    console.log("Submitting signed XDR to Launchtube...");
+    const signTransaction = basicNodeSigner(platformKeypair, NETWORK_PASSPHRASE);
+
+    await assembledTx.sign(signTransaction);
+
+    const signedXDR = assembledTx.toXDR();
+
+    console.log("Signed XDR ready for Launchtube:", signedXDR.substring(0, 100) + "...");
     const formData = new URLSearchParams();
     formData.append("xdr", signedXDR);
 
@@ -125,9 +108,12 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('Error in mint-for-user API:', error);
     let errorDetails: any = { message: error.message, stack: error.stack };
-    if (error.isSorobanError || (error.simulation && error.simulation.error)) {
-        errorDetails.sorobanError = error.isSorobanError ? error.toString() : error.simulation.error;
-        console.error("Soroban related error:", errorDetails.sorobanError);
+    if (error && typeof error.isSorobanError === 'boolean' && error.isSorobanError) {
+        errorDetails.sorobanError = error.toString();
+        console.error("Soroban RPC related error:", errorDetails.sorobanError);
+    } else if (error && error.simulation?.error) {
+        errorDetails.sorobanError = error.simulation.error;
+        console.error("Soroban simulation error:", errorDetails.sorobanError);
     }
     return NextResponse.json(errorDetails, { status: 500 });
   }

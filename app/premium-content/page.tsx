@@ -1,13 +1,44 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useUser } from '../../contexts/UserContext'; // Adjust path if necessary
 import Link from 'next/link';
+import { NftData } from '@/lib/types'; // Added NftData import
 
 export default function PremiumContentPage() {
-  const { user, isLoadingUser, hasPremiumAccess, loginWithPasskey } = useUser();
+  const { user, isLoadingUser, hasPremiumAccess, loginWithPasskey, purchaseNft, isLoading } = useUser(); // Added purchaseNft and isLoading
+  const [isPurchasing, setIsPurchasing] = useState(false); // Added for purchase loading state
 
-  if (isLoadingUser) {
+  // Define the details for the premium access NFT
+  const premiumAccessNftDetails: Omit<NftData, 'id' | 'purchaseDate' | 'contractAddress' | 'tokenId'> & { id: string; price: number; creatorId: string } = {
+    id: 'premium-access-nft-001', // Unique ID for this type of NFT purchase
+    name: 'Site Premium Access Pass',
+    description: 'Unlocks all premium content on the site.',
+    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Golden_key.svg/1200px-Golden_key.svg.png', // Placeholder image
+    price: 25, // Example price in XLM
+    creatorId: 'platform-admin', // Identifier for platform-issued NFTs
+  };
+
+  const handlePurchaseAccess = async () => {
+    if (!user) {
+      alert('Please log in to purchase access.');
+      loginWithPasskey();
+      return;
+    }
+    setIsPurchasing(true);
+    try {
+      await purchaseNft(premiumAccessNftDetails, { directOnChainOnly: true });
+      alert('Premium Access NFT Purchase initiated! You should have access if on-chain minting succeeds.');
+      // The UserContext state update (now conditional on on-chain success) should trigger a re-render
+    } catch (error: any) {
+      console.error('Failed to purchase premium access NFT:', error);
+      alert(`Purchase failed: ${error.message}`);
+    } finally {
+      setIsPurchasing(false);
+    }
+  };
+
+  if (isLoadingUser || isPurchasing) { // Added isPurchasing to loading condition
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-extrabold text-gray-900">Loading User Information...</h1>
@@ -41,12 +72,24 @@ export default function PremiumContentPage() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-extrabold text-gray-900">Premium Access Required</h1>
         <p className="mt-2 text-md text-gray-700">You do not currently have access to this premium content.</p>
-        <p className="mt-1 text-sm text-gray-600">Purchase our Premium NFT from the wallet page to gain access!</p>
+        <p className="mt-1 text-sm text-gray-600">Purchase our Premium Access NFT to unlock all exclusive content!</p>
+        
+        {/* Existing link to wallet page (optional, can be kept or removed) */}
         <Link href="/wallet" 
           className="mt-6 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
         >
-          Go to Wallet/Purchase NFT
+          Go to Wallet Page (for deposits/other actions)
         </Link>
+
+        {/* New Button to Purchase Premium Access NFT */}
+        <button
+          onClick={handlePurchaseAccess}
+          disabled={isPurchasing || isLoading}
+          className="mt-4 inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+        >
+          {isPurchasing ? 'Processing Purchase...' : `Purchase Premium Access NFT (${premiumAccessNftDetails.price} XLM)`}
+        </button>
+
         <p className="mt-4">
           <Link href="/" className="font-medium text-indigo-600 hover:text-indigo-500">
             Go back to Homepage

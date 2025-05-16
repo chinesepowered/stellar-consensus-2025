@@ -119,7 +119,10 @@ interface UserContextType {
   withdrawFromPlatform: (amount: number) => Promise<void>;
   subscribeToCreator: (creatorId: string, price: number) => Promise<void>;
   tipCreator: (creatorId: string, amount: number) => Promise<void>;
-  purchaseNft: (nftDetails: Omit<NftData, 'id' | 'purchaseDate' | 'contractAddress' | 'tokenId'> & { id: string, price: number, creatorId: string }) => Promise<void>;
+  purchaseNft: (
+    nftDetails: Omit<NftData, 'id' | 'purchaseDate' | 'contractAddress' | 'tokenId'> & { id: string, price: number, creatorId: string },
+    options?: { directOnChainOnly?: boolean }
+  ) => Promise<void>;
   fetchBalances: () => Promise<void>;
   fundWalletWithTestnet: () => Promise<void>;
   depositViaLaunchtube: (amount: number) => Promise<boolean>;
@@ -845,90 +848,116 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   };
   
-  const purchaseNft = async (nftPurchaseDetails: Omit<NftData, 'id' | 'purchaseDate' | 'contractAddress' | 'tokenId'> & { id: string, price: number, creatorId: string }) => {
+  const purchaseNft = async (
+    nftPurchaseDetails: Omit<NftData, 'id' | 'purchaseDate' | 'contractAddress' | 'tokenId'> & { id: string, price: number, creatorId: string },
+    options?: { directOnChainOnly?: boolean }
+  ) => {
     if (!user) throw new Error("User not logged in");
     const { price, creatorId, id: nftId } = nftPurchaseDetails;
-    
+
     if (user.platformBalanceXLM < price) throw new Error("Insufficient platform balance.");
     setIsLoading(true);
     try {
-      // First, update the in-memory state
       const newPlatformBalance = user.platformBalanceXLM - price;
-      
-      // Call backend to mint the NFT
-      console.log(`Calling backend API to mint NFT ${nftId}`);
-      
-      const response = await fetch('/api/nft/mint', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          username: user.username,
-          walletAddress: user.smartWalletAddress,
-          nftId,
-          name: nftPurchaseDetails.name,
-          description: nftPurchaseDetails.description,
-          imageUrl: nftPurchaseDetails.imageUrl,
-          creatorId,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json() as { message?: string };
-        throw new Error(errorData.message || 'Failed to mint NFT (platform DB)');
-      }
-      
-      const result = await response.json() as { success: boolean; message?: string; nft: NftData };
-      
-      if (!result.success) {
-        throw new Error(result.message || 'Failed to mint NFT (platform DB reports failure)');
-      }
-      
-      // Use the NFT data returned from the backend
-      const newNft: NftData = result.nft;
-      
-      // ---- START NEW: Call backend to mint the actual NFT on-chain ----
-      try {
-        console.log(`Initiating on-chain minting for NFT ${newNft.id} to wallet ${user.smartWalletAddress}`);
+      let newNft: NftData;
+
+      if (options?.directOnChainOnly) {
+        console.log(`[Direct On-Chain] Initiating on-chain minting for NFT: ${nftPurchaseDetails.name} to wallet ${user.smartWalletAddress}`);
+        // Directly call the on-chain minting, skip platform DB call
         const mintingResponse = await fetch('/api/nft/mint-for-user', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            // Include session token if your backend requires authentication for this
-            // 'Authorization': `Bearer ${sessionToken}`,
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userWalletAddress: user.smartWalletAddress,
-            nftId: newNft.id, // Could be used for logging or linking on backend
-            name: newNft.name,
-            description: newNft.description,
-            imageUrl: newNft.imageUrl,
-            // Pass any other necessary details for minting
+            nftId: nftPurchaseDetails.id, // Use the ID from input details
+            name: nftPurchaseDetails.name,
+            description: nftPurchaseDetails.description,
+            imageUrl: nftPurchaseDetails.imageUrl,
           }),
         });
 
         if (!mintingResponse.ok) {
           const mintErrorData = await mintingResponse.json() as { message?: string };
-          throw new Error(mintErrorData.message || 'On-chain NFT minting failed via backend');
+          // For direct on-chain, failure here is critical, so we throw and stop.
+          throw new Error(mintErrorData.message || 'Direct on-chain NFT minting failed');
         }
 
         const mintingResult = await mintingResponse.json() as { success: boolean; message?: string; [key: string]: any };
-        console.log("On-chain minting successful:", mintingResult);
-        // Potentially update newNft with contractAddress or tokenId if returned and needed
-        // For now, newNft already has what the UI expects from the platform DB
+        console.log("[Direct On-Chain] On-chain minting successful:", mintingResult);
 
-      } catch (mintingError: any) {
-        console.error("Error during on-chain NFT minting:", mintingError);
-        // Decide how to handle this: alert user, rollback platform DB changes, etc.
-        // For now, just alert and the platform DB record remains.
-        alert(`NFT purchase recorded, but on-chain minting failed: ${mintingError.message}. Please contact support.`);
-        // Do not re-throw if we want the rest of the UI update to proceed
+        // Construct NftData client-side as we skipped the DB call that usually provides it
+        newNft = {
+          id: nftPurchaseDetails.id,
+          name: nftPurchaseDetails.name,
+          description: nftPurchaseDetails.description,
+          imageUrl: nftPurchaseDetails.imageUrl,
+          contractAddress: NFT_CONTRACT_ID, // Use the globally defined contract ID
+          tokenId: `onchain-${Date.now()}`, // Placeholder tokenId, actual one is on-chain
+          creatorId: nftPurchaseDetails.creatorId,
+          purchaseDate: new Date().toISOString(),
+        };
+        // No separate alert for on-chain failure here, as we throw above if it fails.
+
+      } else {
+        // Original behavior: Call platform DB first, then on-chain mint
+        console.log(`Calling backend API to mint NFT ${nftId} (platform DB first)`);
+        const response = await fetch('/api/nft/mint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            username: user.username,
+            walletAddress: user.smartWalletAddress,
+            nftId,
+            name: nftPurchaseDetails.name,
+            description: nftPurchaseDetails.description,
+            imageUrl: nftPurchaseDetails.imageUrl,
+            creatorId,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json() as { message?: string };
+          throw new Error(errorData.message || 'Failed to mint NFT (platform DB)');
+        }
+
+        const result = await response.json() as { success: boolean; message?: string; nft: NftData };
+        if (!result.success || !result.nft) {
+          throw new Error(result.message || 'Failed to mint NFT (platform DB reports failure or missing NFT data)');
+        }
+        newNft = result.nft; // Use the NFT data returned from the platform DB
+
+        // ---- Call backend to mint the actual NFT on-chain ----
+        try {
+          console.log(`Initiating on-chain minting for NFT ${newNft.id} to wallet ${user.smartWalletAddress}`);
+          const mintingResponse = await fetch('/api/nft/mint-for-user', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userWalletAddress: user.smartWalletAddress,
+              nftId: newNft.id,
+              name: newNft.name,
+              description: newNft.description,
+              imageUrl: newNft.imageUrl,
+            }),
+          });
+
+          if (!mintingResponse.ok) {
+            const mintErrorData = await mintingResponse.json() as { message?: string };
+            throw new Error(mintErrorData.message || 'On-chain NFT minting failed via backend');
+          }
+
+          const mintingResult = await mintingResponse.json() as { success: boolean; message?: string; [key: string]: any };
+          console.log("On-chain minting successful:", mintingResult);
+        } catch (mintingError: any) {
+          console.error("Error during on-chain NFT minting:", mintingError);
+          alert(`NFT purchase recorded in platform, but on-chain minting failed: ${mintingError.message}. Please contact support.`);
+          // Do not re-throw if we want the rest of the UI update to proceed based on platform DB record
+        }
+        // ---- END On-chain minting call ----
       }
-      // ---- END NEW: Call backend to mint the actual NFT on-chain ----
-      
-      // Add new NFT and action to history
+
+      // Common logic for updating user state
       const newAction: UserAction = {
         id: `action_${Date.now()}`,
         type: "NFT_PURCHASE",
@@ -937,23 +966,24 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         targetId: newNft.id,
         amount: -price
       };
-      
-      const updatedUser = { 
-        ...user, 
+
+      const updatedUser = {
+        ...user,
         platformBalanceXLM: newPlatformBalance,
         ownedNfts: [...user.ownedNfts, newNft],
         actionHistory: [newAction, ...user.actionHistory]
       };
-      
+
       setUser(updatedUser);
       localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
-      
-      alert('NFT Purchased successfully!');
-    } catch (error: any) { 
-      console.error(error); 
-      alert(`NFT Purchase failed: ${error.message}`); 
+
+      alert('NFT Purchase action completed!'); // Unified alert
+    } catch (error: any) {
+      console.error("NFT Purchase Error:", error); // Changed log prefix
+      alert(`NFT Purchase failed: ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   // Now let's add the fundWallet function that will fund a newly created wallet
