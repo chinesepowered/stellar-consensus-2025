@@ -30,3 +30,22 @@ Rust bindings
 Javascript bindings
 stellar contract bindings rust --wasm \code\consensus\contracts\target\wasm32v1-none\release\onlyfrens_nft.wasm --output-dir ./bindings/
 
+
+PS C:\code\consensus\contracts\contracts\nft> stellar contract deploy `
+>>   --wasm \code\consensus\contracts\target\wasm32v1-none\release\onlyfrens_nft.wasm `
+>>   --source chineseman `
+>>   --network testnet `
+>>   --alias onlyfrens-nft
+ℹ️ Simulating install transaction…
+ℹ️ Signing transaction: 2366a31830bce553afbe3f650b93e2ffe4f9f722601c0c0aa99f9959bc8003d7
+🌎 Submitting install transaction…
+ℹ️ Using wasm hash f149d3a12efae7afc35cdd5ad91949b4c6c608ca4670a573bf3a1f1ceb5eba86
+ℹ️ Simulating deploy transaction…
+ℹ️ Transaction hash is caa980e5ae3dc6c94d595f3c8feeecc18aba8b6cbe0c938043822cd27e095d63
+🔗 https://stellar.expert/explorer/testnet/tx/caa980e5ae3dc6c94d595f3c8feeecc18aba8b6cbe0c938043822cd27e095d63
+ℹ️ Signing transaction: caa980e5ae3dc6c94d595f3c8feeecc18aba8b6cbe0c938043822cd27e095d63
+🌎 Submitting deploy transaction…
+🔗 https://stellar.expert/explorer/testnet/contract/CCNMXO54G46RHX6XFJ3ZBVRMXZIPRU7JUNRIITQNTZJWIB55YV6J2W54
+✅ Deployed!
+⚠️ Overwriting existing contract id: CD5IRLBLESZ5X4PTP2IFT6GJXCR45KZJEMSXTYFF7GH2ECA276WOM4WR
+CCNMXO54G46RHX6XFJ3ZBVRMXZIPRU7JUNRIITQNTZJWIB55YV6J2W54
