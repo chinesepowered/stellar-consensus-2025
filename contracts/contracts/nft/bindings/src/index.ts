@@ -207,6 +207,26 @@ export interface Client {
     simulate?: boolean;
   }) => Promise<AssembledTransaction<string>>
 
+  /**
+   * Construct and simulate a balance_of transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  balance_of: ({owner}: {owner: string}, options?: {
+    /**
+     * The fee to pay for the transaction. Default: BASE_FEE
+     */
+    fee?: number;
+
+    /**
+     * The maximum amount of time to wait for the transaction to complete. Default: DEFAULT_TIMEOUT
+     */
+    timeoutInSeconds?: number;
+
+    /**
+     * Whether to automatically simulate the transaction when constructing the AssembledTransaction. Default: true
+     */
+    simulate?: boolean;
+  }) => Promise<AssembledTransaction<u32>>
+
 }
 export class Client extends ContractClient {
   static async deploy<T = Client>(
@@ -234,7 +254,8 @@ export class Client extends ContractClient {
         "AAAAAAAAAAAAAAAIb3duZXJfb2YAAAABAAAAAAAAAAh0b2tlbl9pZAAAAAQAAAABAAAAEw==",
         "AAAAAAAAAAAAAAAOdG9rZW5fbWV0YWRhdGEAAAAAAAEAAAAAAAAACHRva2VuX2lkAAAABAAAAAEAAAfQAAAAC05GVE1ldGFkYXRhAA==",
         "AAAAAAAAAAAAAAAJdG9rZW5fdXJpAAAAAAAAAQAAAAAAAAAIdG9rZW5faWQAAAAEAAAAAQAAB9AAAAANU29yb2JhblN0cmluZwAAAA==",
-        "AAAAAAAAAAAAAAAJZ2V0X2FkbWluAAAAAAAAAAAAAAEAAAAT" ]),
+        "AAAAAAAAAAAAAAAJZ2V0X2FkbWluAAAAAAAAAAAAAAEAAAAT",
+        "AAAAAAAAAAAAAAAKYmFsYW5jZV9vZgAAAAAAAQAAAAAAAAAFb3duZXIAAAAAAAATAAAAAQAAAAQ=" ]),
       options
     )
   }
@@ -246,6 +267,7 @@ export class Client extends ContractClient {
         owner_of: this.txFromJSON<string>,
         token_metadata: this.txFromJSON<NFTMetadata>,
         token_uri: this.txFromJSON<SorobanString>,
-        get_admin: this.txFromJSON<string>
+        get_admin: this.txFromJSON<string>,
+        balance_of: this.txFromJSON<u32>
   }
 }
