@@ -5,7 +5,7 @@ import { useUser } from '@/contexts/UserContext';
 import PasskeyAuth from '@/components/auth/PasskeyAuth';
 
 export default function WalletPage() {
-  const { user, currentXlmBalance, depositToPlatform, withdrawFromPlatform, isLoading, fetchBalances, fundWalletWithTestnet } = useUser();
+  const { user, currentXlmBalance, depositToPlatform, withdrawFromPlatform, isLoading, fetchBalances, fundWalletWithTestnet, depositViaLaunchtube } = useUser();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [amount, setAmount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit');
@@ -89,6 +89,27 @@ export default function WalletPage() {
       localStorage.removeItem("onlyfrens_session_token");
       localStorage.removeItem("onlyfrens_user_data");
       alert("Wallet data reset. Please refresh the page to log in again.");
+    }
+  };
+
+  const handleLaunchtubeDeposit = async () => {
+    if (amount <= 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+    
+    // Check if user has enough XLM
+    const availableXlm = parseFloat(currentXlmBalance);
+    if (isNaN(availableXlm) || availableXlm < amount) {
+      alert(`Insufficient XLM balance. You have ${currentXlmBalance} XLM available.`);
+      return;
+    }
+    
+    try {
+      await depositViaLaunchtube(amount);
+      setAmount(0);
+    } catch (error: any) {
+      alert(`Launchtube deposit failed: ${error.message}`);
     }
   };
 
@@ -303,13 +324,23 @@ export default function WalletPage() {
                   ))}
                 </div>
                 
-                <button
-                  onClick={handleDeposit}
-                  disabled={isLoading || amount <= 0 || parseFloat(currentXlmBalance) < amount}
-                  className="bg-indigo-600 text-white px-6 py-2 rounded-md font-medium hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLoading ? 'Processing...' : 'Deposit'}
-                </button>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={handleDeposit}
+                    disabled={isLoading || amount <= 0 || parseFloat(currentXlmBalance) < amount}
+                    className="bg-indigo-600 text-white px-6 py-2 rounded-md font-medium hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Processing...' : 'Deposit'}
+                  </button>
+                  
+                  <button
+                    onClick={handleLaunchtubeDeposit}
+                    disabled={isLoading || amount <= 0 || parseFloat(currentXlmBalance) < amount}
+                    className="bg-green-600 text-white px-6 py-2 rounded-md font-medium hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Processing...' : 'Via Launchtube'}
+                  </button>
+                </div>
               </div>
             </div>
           ) : (

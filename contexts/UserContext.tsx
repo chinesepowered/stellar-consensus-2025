@@ -122,6 +122,7 @@ interface UserContextType {
   purchaseNft: (nftDetails: Omit<NftData, 'id' | 'purchaseDate' | 'contractAddress' | 'tokenId'> & { id: string, price: number, creatorId: string }) => Promise<void>;
   fetchBalances: () => Promise<void>;
   fundWalletWithTestnet: () => Promise<void>;
+  depositViaLaunchtube: (amount: number) => Promise<boolean>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -601,26 +602,26 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       
       console.log(`Preparing to transfer ${amount} XLM to system account: ${SYSTEM_ACCOUNT_ADDRESS}`);
       
-      // Create a transaction to send XLM to the system account using SAC
       try {
         // Convert XLM amount to stroop (1 XLM = 10,000,000 stroop)
         const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
         console.log(`Building transfer transaction for ${amountInStroops} stroops...`);
         
-        // Create a transfer transaction using the native token contract - similar to demo approach
-        const transferTx = await nativeTokenInstance.transfer({
+        // Following EXACTLY the pattern from the demo in App.svelte:
+        // Get a transaction without destructuring anything
+        const at = await nativeTokenInstance.transfer({
           from: user.smartWalletAddress,
           to: SYSTEM_ACCOUNT_ADDRESS,
           amount: amountInStroops
         });
         
-        // Sign the transaction with the passkey - similar to demo
-        console.log("Signing transaction with passkey...");
-        await passkeyKit.sign(transferTx, { keyId: walletData.keyIdBase64 });
+        // Sign with the keyId like in the demo
+        console.log("Signing transaction...");
+        await passkeyKit.sign(at, { keyId: walletData.keyIdBase64 });
         
-        // Send the transaction - similar to demo
+        // Send the transaction using the built property if it exists, otherwise send the transaction object
         console.log("Sending transaction to network...");
-        const result = await transferTx.send();
+        const result = at.built ? await at.built.send() : await at.send();
         console.log('Transaction successful!', result);
         
         // If transaction was successful, update the local balances
@@ -669,22 +670,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         // Convert XLM amount to stroop
         const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
         
-        // Build a transfer transaction from funding account to user wallet
-        // (as a simulation of platform withdrawal)
-        const transferTx = await nativeTokenInstance.transfer({
+        // Use the pattern from the demo
+        const at = await nativeTokenInstance.transfer({
           from: funding.publicKey,
           to: user.smartWalletAddress,
           amount: amountInStroops
         });
         
         // Sign with the funding account
-        await transferTx.signAuthEntries({
+        await at.signAuthEntries({
           address: funding.publicKey,
           signAuthEntry: funding.signer.signAuthEntry
         });
         
         // Send the transaction
-        const result = await transferTx.send();
+        const result = at.built ? await at.built.send() : await at.send();
         console.log('Withdrawal transaction successful!', result);
         
         // Update local state
@@ -867,21 +867,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       
       console.log(`Funding wallet ${contractId} with 100 XLM from ${funding.publicKey}`);
       
-      // Build the transfer transaction (similar to the demo)
-      const transferTransaction = await nativeTokenInstance.transfer({
+      // Use the pattern from the demo
+      const at = await nativeTokenInstance.transfer({
         to: contractId,
         from: funding.publicKey,
         amount: BigInt(100 * 10_000_000) // 100 XLM
       });
       
       // Sign the transaction with the funding account
-      await transferTransaction.signAuthEntries({
+      await at.signAuthEntries({
         address: funding.publicKey,
         signAuthEntry: funding.signer.signAuthEntry
       });
       
       // Send the transaction
-      const result = await transferTransaction.send();
+      const result = at.built ? await at.built.send() : await at.send();
       console.log("Funding transaction result:", result);
       
       return true;
@@ -916,6 +916,146 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Utility function to submit transactions through Launchtube
+  const submitViaLaunchtube = async (transaction: any) => {
+    if (!transaction.built) {
+      throw new Error("Transaction must be built before submitting to Launchtube");
+    }
+    
+    // Testnet Launchtube URL
+    const LAUNCHTUBE_URL = "https://testnet.launchtube.xyz";
+    
+    // Get token from environment variables
+    const LAUNCHTUBE_TOKEN = process.env.LAUNCHTUBE_TOKEN || "";
+    
+    if (!LAUNCHTUBE_TOKEN) {
+      console.log("No Launchtube token found in environment variables, falling back to direct submission");
+      return transaction.built.send();
+    }
+    
+    try {
+      console.log("Submitting transaction via Launchtube...");
+      
+      // Get the XDR of the built transaction
+      const xdr = transaction.built.toXDR();
+      
+      // Create form data
+      const formData = new URLSearchParams();
+      formData.append("xdr", xdr);
+      
+      // Make the request to Launchtube
+      const response = await fetch(LAUNCHTUBE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Authorization": `Bearer ${LAUNCHTUBE_TOKEN}`
+        },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Launchtube error: ${JSON.stringify(errorData)}`);
+      }
+      
+      const result = await response.json();
+      console.log("Launchtube submission successful:", result);
+      
+      return result;
+    } catch (error) {
+      console.error("Error submitting via Launchtube:", error);
+      console.log("Falling back to direct submission...");
+      return transaction.built.send();
+    }
+  };
+
+  // Function to deposit using Launchtube
+  const depositViaLaunchtube = async (amount: number): Promise<boolean> => {
+    if (!user) throw new Error("User not logged in");
+    if (!passkeyKitInstance || !walletData) throw new Error("Wallet not initialized");
+    if (!nativeTokenInstance) throw new Error("Native token client not initialized");
+    
+    // Get token from environment variables
+    const LAUNCHTUBE_TOKEN = process.env.NEXT_PUBLIC_LAUNCHTUBE_TOKEN || "";
+    
+    if (!LAUNCHTUBE_TOKEN) {
+      console.log("No Launchtube token in environment, falling back to regular deposit");
+      await depositToPlatform(amount);
+      return true; // Assuming deposit was successful
+    }
+    
+    setIsLoading(true);
+    try {
+      const passkeyKit = passkeyKitInstance;
+      
+      console.log(`Preparing to transfer ${amount} XLM to system account via Launchtube: ${SYSTEM_ACCOUNT_ADDRESS}`);
+      
+      try {
+        // Convert XLM amount to stroop (1 XLM = 10,000,000 stroop)
+        const amountInStroops = BigInt(Math.floor(amount * 10_000_000));
+        
+        // Get transaction
+        const at = await nativeTokenInstance.transfer({
+          from: user.smartWalletAddress,
+          to: SYSTEM_ACCOUNT_ADDRESS,
+          amount: amountInStroops
+        });
+        
+        // Sign with the passkey
+        console.log("Signing transaction...");
+        await passkeyKit.sign(at, { keyId: walletData.keyIdBase64 });
+        
+        if (!at.built) {
+          throw new Error("Transaction not properly built for Launchtube");
+        }
+        
+        // Send via Launchtube
+        console.log("Submitting to Launchtube...");
+        const xdr = at.built.toXDR();
+        
+        // Testnet Launchtube URL
+        const LAUNCHTUBE_URL = "https://testnet.launchtube.xyz";
+        
+        // Make the request to Launchtube
+        const response = await fetch(LAUNCHTUBE_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Authorization": `Bearer ${LAUNCHTUBE_TOKEN}`
+          },
+          body: new URLSearchParams({ xdr })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`Launchtube error: ${JSON.stringify(errorData)}`);
+        }
+        
+        const result = await response.json();
+        console.log("Launchtube submission successful:", result);
+        
+        // If transaction was successful, update the local balances
+        const newPlatformBalance = user.platformBalanceXLM + amount;
+        const newXlmBalance = (parseFloat(currentXlmBalance) - amount).toFixed(7);
+        
+        // Update user in state and localStorage
+        const updatedUser = { ...user, platformBalanceXLM: newPlatformBalance };
+        setUser(updatedUser);
+        setCurrentXlmBalance(newXlmBalance);
+        localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updatedUser));
+        
+        alert('Deposit via Launchtube Successful!');
+        return true;
+      } catch (txError: any) {
+        console.error("Launchtube transaction error:", txError);
+        alert(`Launchtube deposit failed: ${txError.message || 'Unknown error'}`);
+        return false;
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <UserContext.Provider
       value={{
@@ -935,7 +1075,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         tipCreator,
         purchaseNft,
         fetchBalances,
-        fundWalletWithTestnet: fundCurrentWalletWithTestnet
+        fundWalletWithTestnet: fundCurrentWalletWithTestnet,
+        depositViaLaunchtube
       }}
     >
       {children}
