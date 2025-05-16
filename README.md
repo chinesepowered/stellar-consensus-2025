@@ -10,7 +10,7 @@ A platform where creators meet cutting-edge Web3 technology, designed to prove t
 
 Watch a quick walkthrough of OnlyFrens in action:
 
-<video src="/public/demo.mp4" controls width="100%">
+<video src="https://github.com/chinesepowered/stellar-consensus-2025/raw/refs/heads/main/public/demo.mp4" controls width="100%">
   Your browser does not support the video tag.
 </video>
 
@@ -18,20 +18,16 @@ Watch a quick walkthrough of OnlyFrens in action:
 
 Here are some glimpses of the OnlyFrens interface:
 
-![OnlyFrens Homepage](/public/screen1.jpg)
-*Caption: OnlyFrens Homepage - Getting Started Guide and Creator Preview*
-
-![OnlyFrens Support Modal](/public/screen2.jpg)
-*Caption: Support Modal - Multiple options to support a creator*
-
-![OnlyFrens Premium Content Locked](/public/screen3.jpg)
-*Caption: Premium Content - Locked state, prompting user to unlock*
-
-![OnlyFrens Premium Content Unlocked](/public/screen4.jpg)
-*Caption: Premium Content - Unlocked state, video accessible*
-
-![OnlyFrens Creator Timeline](/public/screen5.jpg)
-*Caption: Creator Timeline - Posts and updates from a subscribed creator*
+<p align="center">
+  <img src="/public/screen1.jpg" alt="OnlyFrens Homepage" width="170" />
+  <img src="/public/screen2.jpg" alt="OnlyFrens Support Modal" width="170" />
+  <img src="/public/screen3.jpg" alt="OnlyFrens Premium Content Locked" width="170" />
+  <img src="/public/screen4.jpg" alt="OnlyFrens Premium Content Unlocked" width="170" />
+  <img src="/public/screen5.jpg" alt="OnlyFrens Creator Timeline" width="170" />
+</p>
+<p align="center">
+  <em>Homepage &amp; Guide</em> | <em>Support Modal</em> | <em>Premium Locked</em> | <em>Premium Unlocked</em> | <em>Creator Timeline</em>
+</p>
 
 ## 💡 Core UX Philosophy & Key Features
 
