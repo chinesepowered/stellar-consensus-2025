@@ -141,6 +141,24 @@ impl NftContract {
     pub fn get_admin(env: Env) -> Address {
         env.storage().instance().get(&DataKey::Admin).unwrap()
     }
+
+    // Get the balance (number of NFTs) owned by an address
+    pub fn balance_of(env: Env, owner: Address) -> u32 {
+        let total_supply: u32 = env.storage().instance().get(&DataKey::TotalSupply).unwrap_or(0);
+        let mut balance: u32 = 0;
+        
+        // Iterate through all tokens and count those owned by the address
+        for token_id in 1..=total_supply {
+            if env.storage().instance().has(&DataKey::TokenOwner(token_id)) {
+                let token_owner: Address = env.storage().instance().get(&DataKey::TokenOwner(token_id)).unwrap();
+                if token_owner == owner {
+                    balance += 1;
+                }
+            }
+        }
+        
+        balance
+    }
 }
 
 #[cfg(test)]
@@ -186,10 +204,18 @@ mod test {
         let uri = client.token_uri(&token_id);
         assert_eq!(uri, SorobanString::from_str(&env, "https://example.com/nft.png"));
 
+        // Check balance
+        assert_eq!(client.balance_of(&user1), 1);
+        assert_eq!(client.balance_of(&user2), 0);
+
         // Transfer NFT
         env.mock_all_auths();
         client.transfer(&user1, &user2, &token_id);
         assert_eq!(client.owner_of(&token_id), user2);
+        
+        // Check balance after transfer
+        assert_eq!(client.balance_of(&user1), 0);
+        assert_eq!(client.balance_of(&user2), 1);
 
         // Mint another NFT
         env.mock_all_auths();
@@ -202,5 +228,8 @@ mod test {
         assert_eq!(token_id2, 2);
         assert_eq!(client.total_supply(), 2);
         assert_eq!(client.owner_of(&token_id2), user2);
+        
+        // Check user2 balance after second mint
+        assert_eq!(client.balance_of(&user2), 2);
     }
 }
