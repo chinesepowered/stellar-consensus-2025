@@ -71,9 +71,18 @@ interface UserContextType {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 // Helper function to mock a Stellar wallet address from a username
+// This is now deprecated as we'll use real wallet addresses from PasskeyKit
 const mockWalletAddress = (username: string): string => {
   // Generate a deterministic mock wallet address for demo purposes
   return `G${username.toUpperCase().repeat(5).substring(0, 55)}`;
+};
+
+// Helper function to completely reset user data
+const resetAllUserData = () => {
+  localStorage.removeItem(SESSION_TOKEN_LOCAL_STORAGE_KEY);
+  localStorage.removeItem(LOCAL_STORAGE_USER_KEY);
+  localStorage.removeItem(LOCAL_STORAGE_WALLET_KEY);
+  console.log("All user data reset. User should register a new passkey.");
 };
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
@@ -207,54 +216,60 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       alert("PasskeyKit is still initializing or not available. Please try again shortly.");
       return;
     }
+    
+    // First clear any existing data to avoid conflicts
+    resetAllUserData();
+    
     setIsLoading(true);
     try {
-      // Using proper PasskeyKit createKey method for registration
+      // Using direct PasskeyKit createWallet method for registration
+      // This will create both a passkey and wallet in one step
       const passkeyKit = passkeyKitRef.current;
-      const attestationResult = await passkeyKit.createKey(
+      
+      console.log("Creating wallet directly with PasskeyKit.createWallet...");
+      const walletResult = await passkeyKit.createWallet(
         "onlyfrens", // app name
-        username,    // username
-        {
-          rpId: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname,
-        }
+        username     // username
       );
       
-      console.log("PasskeyKit createKey result:", attestationResult);
+      console.log("Wallet creation result:", walletResult);
 
-      // Store keyId for future wallet connections
-      if (attestationResult.keyIdBase64) {
-        // Create wallet data object to persist
+      // We should now have a valid wallet
+      if (walletResult.keyIdBase64 && walletResult.contractId) {
+        // Create wallet data object to persist with real wallet address
         const walletInfo: WalletData = {
-          keyIdBase64: attestationResult.keyIdBase64,
-          publicKey: attestationResult.keyIdBase64, // In a real app this would be the actual public key
-          smartWalletAddress: mockWalletAddress(username)
+          keyIdBase64: walletResult.keyIdBase64,
+          publicKey: walletResult.keyIdBase64,
+          smartWalletAddress: walletResult.contractId
         };
         
-        // Create a mock user in localStorage
-        const newUserId = attestationResult.keyIdBase64;
+        // Create a user in localStorage with real wallet address
+        const newUserId = walletResult.keyIdBase64;
         const mockUser: ApiUser = {
           id: newUserId,
           username,
-          smartWalletAddress: mockWalletAddress(username),
+          smartWalletAddress: walletResult.contractId,
           platformBalanceXLM: 1000, // Initial balance for demo
           subscriptions: [],
           ownedNfts: [],
           actionHistory: [],
-          passkeyCredentialId: attestationResult.keyIdBase64,
-          passkeyPublicKey: attestationResult.keyIdBase64, // In a real app this would be different
+          passkeyCredentialId: walletResult.keyIdBase64,
+          passkeyPublicKey: walletResult.keyIdBase64,
         };
         
         // Generate a mock session token
         const sessionToken = `session_${newUserId}_${Date.now()}`;
         
         handleAuthSuccess(mockUser, sessionToken, walletInfo);
-        alert(`Welcome, ${username}!`);
+        alert(`Welcome, ${username}! Your new wallet address is ${walletResult.contractId}`);
       } else {
-        throw new Error('Registration failed: No keyId returned from PasskeyKit');
+        throw new Error('Registration failed: Wallet creation did not return expected values');
       }
     } catch (error: any) {
       console.error("Registration error:", error.message, error.stack);
       alert(`Registration Error: ${error.message}`);
+      // Reset data on failure to ensure clean state
+      resetAllUserData();
     } finally {
       setIsLoading(false);
     }
@@ -265,80 +280,130 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       alert("PasskeyKit is still initializing or not available. Please try again shortly.");
       return;
     }
+    
+    const passkeyKit = passkeyKitRef.current;
     setIsLoading(true);
+    
     try {
-      // Try to get stored wallet data first
-      const storedWalletData = localStorage.getItem(LOCAL_STORAGE_WALLET_KEY);
-      let storedKeyId = null;
+      // Try to force a new authentication to bypass potential cached credentials
+      alert("Please select a passkey from your device. If you have multiple passkeys, choose the most recent one.");
       
-      if (storedWalletData) {
-        const parsedWalletData = JSON.parse(storedWalletData);
-        storedKeyId = parsedWalletData.keyIdBase64;
-      }
-      
-      // Using proper PasskeyKit connectWallet method
-      const passkeyKit = passkeyKitRef.current;
-      
-      const connectOptions: any = {
-        rpId: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname
-      };
-      
-      // If we have a stored keyId, use it to help with wallet connection
-      if (storedKeyId) {
-        connectOptions.keyId = storedKeyId;
-      }
-      
-      console.log("Connecting wallet with options:", connectOptions);
-      
+      // Since we can't access the WebAuthn property directly, use a fresh createKey call first
+      // This will trigger the authenticator selection UI and get us a keyId
       try {
-        const assertionResult = await passkeyKit.connectWallet(connectOptions);
-        console.log("Wallet connect result:", assertionResult);
+        // First try full authentication flow without stored data
+        const connectResult = await passkeyKit.connectWallet({
+          rpId: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname
+        });
         
-        if (assertionResult.keyIdBase64) {
-          // Create or update wallet data
+        console.log("Connect wallet result:", connectResult);
+        
+        if (connectResult && connectResult.contractId) {
+          // Successfully connected to wallet
           const walletInfo: WalletData = {
-            keyIdBase64: assertionResult.keyIdBase64,
-            // In a real app we would set the actual public key and wallet address
-            publicKey: assertionResult.keyIdBase64,
-            smartWalletAddress: mockWalletAddress(assertionResult.keyIdBase64.substring(0, 8))
+            keyIdBase64: connectResult.keyIdBase64,
+            publicKey: connectResult.keyIdBase64,
+            smartWalletAddress: connectResult.contractId
           };
           
-          // Retrieve the user from localStorage or create one if it doesn't exist
+          // Either update existing user or create new one
           const storedUserData = localStorage.getItem(LOCAL_STORAGE_USER_KEY);
           let userData: ApiUser;
           
           if (storedUserData) {
             userData = JSON.parse(storedUserData);
+            userData.smartWalletAddress = connectResult.contractId;
+            userData.passkeyCredentialId = connectResult.keyIdBase64;
+            userData.passkeyPublicKey = connectResult.keyIdBase64;
           } else {
-            // No stored user - create a mock user with a generic username
+            // Create new user
             userData = {
-              id: assertionResult.keyIdBase64,
-              username: `user_${assertionResult.keyIdBase64.substring(0, 6)}`,
-              smartWalletAddress: mockWalletAddress(`user_${assertionResult.keyIdBase64.substring(0, 6)}`),
-              platformBalanceXLM: 1000,  // Demo balance
+              id: connectResult.keyIdBase64,
+              username: `user_${connectResult.keyIdBase64.substring(0, 6)}`,
+              smartWalletAddress: connectResult.contractId,
+              platformBalanceXLM: 1000,
               subscriptions: [],
               ownedNfts: [],
               actionHistory: [],
-              passkeyCredentialId: assertionResult.keyIdBase64,
-              passkeyPublicKey: assertionResult.keyIdBase64
+              passkeyCredentialId: connectResult.keyIdBase64,
+              passkeyPublicKey: connectResult.keyIdBase64
             };
           }
           
-          // Generate a session token
+          // Generate session token
           const sessionToken = `session_${userData.id}_${Date.now()}`;
-          
           handleAuthSuccess(userData, sessionToken, walletInfo);
-          alert(`Welcome back, ${userData.username}!`);
+          alert(`Welcome back! Your wallet address is ${connectResult.contractId}`);
         } else {
-          throw new Error('Login failed: No keyId returned from PasskeyKit');
+          throw new Error("Failed to connect wallet. No contract ID returned.");
         }
-      } catch (e: any) {
-        console.error("PasskeyKit.connectWallet error:", e);
-        alert(`Login error: ${e.message}`);
+      } catch (error: any) {
+        console.error("Connect wallet error:", error);
+        // If we can't connect, offer to create a new wallet
+        if (confirm("Unable to connect to an existing wallet. Would you like to create a new one instead?")) {
+          try {
+            // Reset everything first
+            resetAllUserData();
+            
+            // Create a username
+            const username = prompt("Enter a username for your new wallet:", "user") || "user";
+            
+            // Create a new wallet
+            const walletResult = await passkeyKit.createWallet(
+              "onlyfrens",
+              username
+            );
+            
+            if (walletResult && walletResult.contractId) {
+              // Create wallet info
+              const walletInfo: WalletData = {
+                keyIdBase64: walletResult.keyIdBase64,
+                publicKey: walletResult.keyIdBase64,
+                smartWalletAddress: walletResult.contractId
+              };
+              
+              // Create user
+              const newUser: ApiUser = {
+                id: walletResult.keyIdBase64,
+                username,
+                smartWalletAddress: walletResult.contractId,
+                platformBalanceXLM: 1000,
+                subscriptions: [],
+                ownedNfts: [],
+                actionHistory: [],
+                passkeyCredentialId: walletResult.keyIdBase64,
+                passkeyPublicKey: walletResult.keyIdBase64
+              };
+              
+              // Create session
+              const sessionToken = `session_${newUser.id}_${Date.now()}`;
+              handleAuthSuccess(newUser, sessionToken, walletInfo);
+              alert(`New wallet created successfully! Your wallet address is ${walletResult.contractId}`);
+            } else {
+              throw new Error("Failed to create new wallet during login recovery.");
+            }
+          } catch (createError: any) {
+            console.error("Failed to create new wallet:", createError);
+            alert(`Error creating new wallet: ${createError.message}\n\nPlease try registering a completely new passkey.`);
+          }
+        } else {
+          // User chose not to create a new wallet
+          alert("Login canceled. Please try registering a new passkey instead.");
+        }
       }
     } catch (e: any) {
-      console.error("Login error:", e);
-      alert(`Login failed: ${e.message}`);
+      console.error("Authentication error:", e);
+      
+      // If authentication fails, offer to reset
+      if (confirm("Authentication failed or was canceled. Would you like to reset your data and register a new passkey?")) {
+        resetAllUserData();
+        setUser(null);
+        setSessionToken(null);
+        setWalletData(null);
+        alert("Your data has been reset. Please register a new passkey.");
+      } else {
+        alert(`Login failed: ${e.message}`);
+      }
     } finally {
       setIsLoading(false);
     }
